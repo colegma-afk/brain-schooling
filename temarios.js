@@ -178,3 +178,101 @@ const TEMARIOS = {
     ]},
   },
 };
+
+/* ================= ELECTIVOS 3° y 4° MEDIO (Formación Diferenciada HC) =================
+   Mismo contenido en 3° y 4°; se asigna a ambos niveles. */
+const _ELECTIVOS = {
+  el_biocel: { horas: "11 h 52 min", u: [
+    { n: "Biomoléculas", t: [["Niveles de organización de la materia", 23, "M"], ["Tipos de biomoléculas", 8, "M"], ["Síntesis de biomoléculas", 7, "M"], ["Carbohidratos", 8, "M"], ["Lípidos", 12, "M"], ["Proteínas", 12, "M"], ["Ácidos nucleicos", 9, "M"]] },
+    { n: "Célula", t: [["Rol de la biología celular y molecular", 9, "M"], ["Hitos de la biología celular", 10, "M"], ["Teoría celular", 7, "M"], ["Tipos de células", 8, "M"], ["Célula procarionte", 12, "M"], ["Célula eucarionte", 8, "M"], ["Matriz extracelular", 13, "M"], ["Membrana plasmática", 9, "M"], ["Uniones celulares", 9, "M"], ["Citoesqueleto, cilios y flagelos", 9, "M"], ["Núcleo", 6, "M"], ["Mitocondria y cloroplasto", 12, "M"], ["Retículo endoplasmático", 7, "M"], ["Aparato de Golgi", 7, "M"], ["Ribosomas", 5, "M"], ["Lisosomas y vesículas", 8, "M"], ["Diversidad celular en el cuerpo humano", 20, "M"], ["Ciclo y división celular", 34, "M"], ["Diferenciación celular", 11, "M"], ["Muerte celular y apoptosis", 34, "M"]] },
+    { n: "ADN", t: [["Historia de la investigación del ADN", 30, "M"], ["ADN y su estructura", 10, "M"], ["Organización del ADN", 18, "M"], ["Dogma central de la biología", 5, "M"], ["Replicación", 17, "M"], ["Transcripción", 11, "M"], ["Traducción", 13, "M"]] },
+    { n: "Proteínas", t: [["Propiedades de las proteínas", 16, "M"], ["Contracción muscular", 10, "M"], ["Unión neuromuscular", 10, "M"], ["Proteínas en la membrana", 10, "M"], ["Enzimas y regulación enzimática", 37, "M"], ["Aplicaciones industriales de las enzimas", 4, "M"], ["Enfermedades por proteínas defectuosas", 18, "M"]] },
+    { n: "Genética y áreas de interés", t: [["Expresión génica y diferenciación", 12, "M"], ["Puntos de control de la expresión génica", 9, "M"], ["Reparación del ADN", 8, "M"], ["Mutaciones", 9, "M"], ["Epigenética", 8, "M"], ["Gemelos monocigóticos y expresión genética", 10, "M"]] },
+    { n: "Biotecnología e ingeniería genética", t: [["Biotecnología e ingeniería genética", 17, "M"], ["ADN y proteína recombinantes", 10, "M"], ["Vacunas", 15, "M"], ["Clonación", 5, "M"], ["Organismos genéticamente modificados", 6, "M"], ["Biotecnología en la agronomía", 5, "M"], ["CRISPR/Cas9", 13, "M"], ["Análisis de ADN y criminalística", 10, "M"], ["Biología sintética", 7, "M"], ["Biotecnología y ética", 12, "M"]] },
+  ]},
+  el_bioeco: { horas: "10 h 57 min", u: [
+    { n: "Vida: teorías, inicios e historia", t: [["Definición de vida según la ciencia", 29, "M"], ["Origen de la vida: postulaciones científicas", 27, "M"], ["Experimento de Miller y Urey", 7, "M"], ["Teoría de la autopoiesis", 12, "M"], ["Evolución de las especies", 44, "M"], ["Evidencias de la evolución", 17, "M"], ["Teorías evolutivas", 18, "M"], ["De primates a homínidos", 32, "M"], ["Extinciones masivas", 12, "M"], ["Teoría Gaia", 10, "M"]] },
+    { n: "Ecología", t: [["Fotosíntesis y factores que la afectan", 44, "M"], ["Respiración celular y fermentación", 27, "M"], ["Especiación", 19, "M"], ["Ecosistemas y sus interacciones", 16, "M"], ["Poblaciones y sus dinámicas", 27, "M"], ["Cadenas y redes tróficas", 16, "M"], ["Pirámides ecológicas", 10, "M"], ["Ciclos biogeoquímicos", 20, "M"], ["Mesocosmos", 15, "E"]] },
+    { n: "Biodiversidad y situación chilena", t: [["Servicios ecosistémicos", 13, "M"], ["Ecosistemas y biodiversidad en Chile", 18, "M"], ["Estado de la biodiversidad en Chile", 12, "M"], ["Amenazas a la biodiversidad", 7, "M"], ["Bancos de diversidad genética", 21, "M"]] },
+    { n: "Cambio climático y sus efectos en Chile", t: [["Cambio climático", 12, "M"], ["Causas naturales e impacto en ecosistemas", 17, "M"], ["Bioacumulación y biomagnificación", 12, "M"], ["Gases de efecto invernadero", 9, "M"], ["Arrecifes de coral", 11, "M"], ["Límites planetarios", 8, "M"], ["Impacto de la industria", 12, "M"], ["Efectos del cambio climático en Chile", 12, "M"], ["Zonas de sacrificio en Chile", 10, "M"]] },
+    { n: "Iniciativas de protección del medio ambiente", t: [["Encuestas nacionales sobre medio ambiente", 14, "M"], ["Políticas de preservación de ecosistemas", 5, "M"], ["Acuerdos medioambientales internacionales", 9, "M"], ["ODS", 9, "M"], ["Biomímesis", 8, "M"], ["Economía circular", 12, "M"]] },
+  ]},
+  el_salud: { horas: "13 h 15 min", u: [
+    { n: "Salud pública", t: [["Concepto de salud multidimensional", 11, "M"], ["Factores de riesgo y protectores", 17, "M"], ["Indicadores de salud", 18, "M"], ["Indicadores y factores socioeconómicos", 11, "M"], ["Situación chilena según indicadores", 15, "M"], ["Salud del adolescente", 20, "M"], ["Salud laboral", 12, "M"]] },
+    { n: "Factores que afectan la salud", t: [["Sueño", 23, "M"], ["Abuso de drogas y sustancias", 17, "M"], ["Drogas en el sistema nervioso", 26, "M"], ["Salud mental", 32, "M"], ["Actividad física y sedentarismo", 22, "M"], ["Alimentación y nutrición", 20, "M"], ["Malnutrición por exceso y déficit", 33, "M"], ["Diabetes y prediabetes", 23, "M"], ["Hipertensión arterial", 21, "M"], ["Dislipidemias", 17, "M"], ["Enfermedades infectocontagiosas", 49, "M"], ["Infecciones de transmisión sexual", 24, "M"], ["Contaminación del aire, agua y suelo", 51, "M"], ["Glifosato y transgénicos", 19, "M"]] },
+    { n: "ADN y enfermedades asociadas", t: [["Repaso ADN y expresión génica", 35, "M"], ["Anemia falciforme", 15, "M"], ["Mutaciones y enfermedades hereditarias", 25, "M"], ["Síndrome de Down", 15, "M"], ["Cáncer de mama y ovario", 21, "M"], ["Influencia del medio ambiente en la genética", 35, "M"]] },
+    { n: "Investigación, tecnología y promoción", t: [["Encuestas en salud", 31, "M"], ["Encuesta Nacional de Salud", 18, "M"], ["Fuentes de información en salud", 24, "M"], ["Promoción en salud", 17, "M"], ["Investigaciones de salud en Chile", 19, "M"], ["Tecnología al servicio de la salud", 13, "M"], ["Vacunas y terapia TAPCells", 32, "M"], ["Tecnología en diabetes y cáncer cervicouterino", 26, "M"]] },
+  ]},
+  el_fis: { horas: "12 h 06 min", u: [
+    { n: "Cosmos", t: [["Introducción a la Astronomía", 28, "M"], ["Origen y evolución del Universo", 26, "M"], ["Composición del Universo", 20, "M"], ["Modelo heliocéntrico y geocéntrico", 11, "M"], ["Cosmogonía ancestral y moderna", 26, "M"], ["Leyes de Kepler", 12, "M"], ["Instrumentación y astronomía en Chile", 27, "M"], ["Movimientos de la Tierra y eclipses", 22, "M"], ["Sistema Solar", 52, "M"]] },
+    { n: "Fuerzas centrales", t: [["Vectores y operatoria", 67, "M"], ["Conceptos de cinemática", 11, "M"], ["Movimiento circular: período y velocidad angular", 19, "M"], ["Aceleración y fuerza centrípeta", 13, "M"], ["Momento de inercia", 12, "M"], ["Momento angular y su conservación", 14, "M"], ["Ley de gravitación universal", 15, "M"], ["Fuerzas centrales en diversos contextos", 9, "M"]] },
+    { n: "Cambio climático", t: [["Posición Tierra-Sol y estaciones", 14, "M"], ["Tiempo atmosférico, clima y cambio climático", 13, "M"], ["Efecto invernadero y balance energético", 15, "M"], ["Calentamiento global: causas y consecuencias", 14, "M"], ["Recursos energéticos y renovables", 16, "M"], ["Física de sistemas naturales", 18, "M"]] },
+    { n: "Física moderna", t: [["¿Qué es la física moderna?", 12, "M"], ["Relatividad", 16, "M"], ["Espacio-tiempo curvo", 6, "M"], ["Sistemas de referencia y observador", 14, "M"], ["Mecánica cuántica", 18, "M"], ["Física moderna vs. clásica", 13, "M"], ["Alcance de la física moderna", 8, "M"]] },
+  ]},
+  el_hpres: { horas: "2 h 57 min", u: [
+    { n: "Presente y conocimiento histórico", t: [["Introducción al concepto de historia", 24, "M"], ["El uso de la periodización", 11, "M"], ["Cambios y continuidades", 15, "M"], ["La historia reciente como objeto de estudio", 13, "M"], ["Tipos de fuentes para la historia reciente", 9, "M"]] },
+    { n: "Sujetos históricos en la democratización de Chile", t: [["El concepto de sujeto histórico", 10, "M"], ["Sujetos históricos recientes en Chile", 7, "M"]] },
+    { n: "Cambios y continuidades en la vida cotidiana", t: [["¿Cómo se formulan preguntas en historia?", 16, "M"], ["Cambios en la vida privada", 10, "M"], ["La familia y el matrimonio en Chile reciente", 11, "M"], ["Memoria y patrimonio", 16, "M"]] },
+    { n: "Historia reciente para la comunidad", t: [["Analizar fuentes visuales", 15, "M"], ["La historia oral", 11, "M"], ["La creación de archivos locales", 9, "M"]] },
+  ]},
+  el_geo: { horas: "2 h 18 min", u: [
+    { n: "El espacio geográfico", t: [["El concepto de espacio geográfico", 8, "M"], ["Construcción histórica del espacio", 11, "M"], ["Relaciones sociales: convivencia y conflicto", 14, "M"], ["Segregación espacial en las ciudades", 14, "M"]] },
+    { n: "El paisaje cambia en el tiempo", t: [["El concepto de paisaje", 7, "M"], ["Determinismo y posibilismo", 9, "M"], ["Cultura chilena y paisaje: mitos y leyendas", 11, "M"], ["El relieve chileno", 6, "M"], ["Fuerzas endógenas y exógenas", 9, "M"]] },
+    { n: "Planificación del territorio", t: [["Introducción a la planificación territorial", 10, "M"], ["Planificación y desarrollo sustentable", 10, "M"], ["Compromisos del Estado ante la industria", 10, "M"]] },
+    { n: "Riesgos socionaturales", t: [["Riesgos socionaturales y responsabilidad", 10, "M"], ["Zonas vulnerables a desastres en Chile", 9, "M"]] },
+  ]},
+  el_global: { horas: "2 h 05 min", u: [
+    { n: "Procesos migratorios", t: [["Migración contemporánea y globalización", 8, "M"], ["Caracterización de la población migrante", 21, "M"], ["Migrantes, mercado laboral y remesas", 16, "M"], ["Migrantes y Derechos Humanos", 10, "M"]] },
+    { n: "Conflictos internacionales y economía", t: [["Economía global: introducción", 16, "M"], ["Conflictos internacionales: enfoques", 9, "M"], ["Dimensiones económicas de los conflictos", 14, "M"], ["Institucionalidad global", 8, "M"]] },
+    { n: "Decisiones económicas y cambio climático", t: [["El cambio climático y sus características", 9, "M"], ["Los Estados ante el cambio climático", 6, "M"], ["Los efectos locales del cambio climático", 8, "M"]] },
+  ]},
+  el_lee: { horas: "6 h 36 min", u: [
+    { n: "Procesando información", t: [["¿Qué es leer comprensivamente?", 13, "M"], ["La competencia lectora", 14, "M"], ["Pasos y etapas de la lectura", 13, "M"], ["Las habilidades cognitivas", 13, "M"], ["Las estructuras textuales", 20, "M"], ["La síntesis y las macrorreglas", 11, "M"], ["Ejercitación guiada", 11, "E"]] },
+    { n: "Comunidades especializadas", t: [["Situación comunicativa y organización de ideas", 14, "M"], ["¿Cómo se organiza el texto?", 25, "M"], ["El texto: rasgos, orales y escritos", 26, "M"], ["Secuencias textuales", 14, "M"], ["Textos académicos", 15, "M"], ["Textos periodísticos, administrativos y jurídicos", 16, "M"]] },
+    { n: "Transformando la información", t: [["Texto y contexto", 20, "M"], ["El comentario de texto: método", 17, "M"], ["Comentario lingüístico, histórico y literario", 17, "M"], ["Comentario: La Regenta", 16, "M"], ["Comentario: Crónica de una muerte anunciada", 15, "M"]] },
+    { n: "Nuevos formatos artísticos", t: [["¿Qué es un trabajo de investigación?", 16, "M"], ["Tipo de investigación y planificación", 16, "M"], ["Tipos de fuentes de información", 34, "M"], ["Organización de la información", 11, "M"], ["El guion provisional", 13, "M"], ["Redacción: introducción, cuerpo y conclusión", 16, "M"]] },
+  ]},
+  el_arg: { horas: "6 h 52 min", u: [
+    { n: "Argumentación en ámbitos sociales", t: [["¿Qué voy a aprender y cómo?", 10, "M"], ["La argumentación en la vida humana", 13, "M"], ["Tipos de problemas y campos disciplinares", 14, "M"], ["Factores que intervienen en la argumentación", 17, "M"], ["La argumentación en los campos disciplinares", 15, "M"], ["La investigación: tema, problema e hipótesis", 15, "M"]] },
+    { n: "La argumentación situada críticamente", t: [["Textos expositivo-argumentativos", 19, "M"], ["Tipos de argumentos", 14, "M"], ["Evaluar buenos y malos argumentos", 16, "M"], ["Modos de razonamiento argumentativo", 12, "M"], ["Falacias argumentativas", 12, "M"], ["Conectores y modalizadores", 28, "M"], ["Modelo argumentativo de Toulmin", 15, "M"], ["Posturas ideológicas y sociales", 19, "M"], ["Estrategias argumentativas", 16, "M"]] },
+    { n: "Discusión razonada y rigurosa", t: [["Una estructura argumentativa", 26, "M"], ["Modalidades orales y escritas", 18, "M"], ["Discursos públicos", 18, "M"], ["Recursos no lingüísticos", 22, "M"], ["Argumentación dialógica", 16, "M"], ["Fórmulas para intervenir en una discusión", 12, "M"], ["Debate, mesa redonda y foro", 31, "M"]] },
+    { n: "Discurso sobre una controversia", t: [["La negociación", 16, "M"], ["Para una buena exposición argumentativa", 18, "M"]] },
+  ]},
+  el_lit: { horas: "7 h", u: [
+    { n: "Trayectorias de lectura", t: [["Criterios para construir trayectorias", 12, "M"], ["De la poesía romántica a las vanguardias", 8, "M"], ["El romanticismo literario", 24, "M"], ["Análisis de un poema romántico", 12, "M"], ["La poesía modernista", 17, "M"], ["Literatura de vanguardia", 17, "M"], ["La generación del 27", 15, "M"], ["Las vanguardias europeas", 26, "M"]] },
+    { n: "Transformemos experiencias reales", t: [["El acto de contar", 19, "M"], ["Las fuentes y los orígenes de la narración", 20, "M"], ["El concepto de género", 21, "M"], ["La forma y la estructura narrativa", 31, "M"], ["Elementos del mundo narrado", 13, "M"], ["El tiempo en la narración", 13, "M"]] },
+    { n: "Crear colaborativamente", t: [["Los personajes y los actantes", 19, "M"], ["Los conflictos como estructuradores", 15, "M"], ["El trabajo de taller", 17, "M"], ["Ejercicios para desarrollar personajes", 30, "E"], ["Ejercicios de espacio, tiempo y sinopsis", 15, "E"]] },
+    { n: "Nuevos formatos artísticos", t: [["Ampliando el concepto de géneros", 19, "M"], ["Otros formatos narrativos", 13, "M"], ["Experimentar con estructuras narrativas", 13, "M"], ["Transformar un relato en cómic", 12, "M"], ["Proyecto final: obra de teatro social", 19, "M"]] },
+  ]},
+  el_geo3d: { horas: "2 h 46 min", u: [
+    { n: "Representación vectorial", t: [["Representación con vectores", 11, "M"], ["Actividad 1", 10, "E"], ["Actividad 2", 10, "E"]] },
+    { n: "Rectas y planos en el espacio", t: [["Geometría espacial", 28, "M"], ["Actividad 3", 21, "E"], ["Actividad 4", 20, "E"]] },
+    { n: "Generación de cuerpos", t: [["Traslación y rotación 2D→3D", 8, "M"], ["Actividad 5", 22, "E"], ["Actividad 6", 14, "E"]] },
+    { n: "Objetos, caras y perspectivas", t: [["Formas 3D en dos dimensiones", 6, "M"], ["Actividad 7", 16, "E"]] },
+  ]},
+  el_calc: { horas: "4 h 56 min", u: [
+    { n: "Funciones", t: [["Modelar situaciones por funciones", 23, "M"], ["Actividad 1", 26, "E"], ["Actividad 2", 22, "E"]] },
+    { n: "Límites", t: [["Límite de una sucesión", 21, "M"], ["Actividad 3", 18, "E"], ["Límite de una función", 39, "M"], ["Actividad 4", 18, "E"]] },
+    { n: "Derivadas", t: [["Derivadas", 28, "M"], ["Actividad 5", 19, "E"], ["Actividad 6", 14, "E"], ["Actividad 7", 20, "E"]] },
+    { n: "Integrales", t: [["Integrales", 21, "M"], ["Actividad 8", 10, "E"], ["Actividad 9", 17, "E"]] },
+  ]},
+  el_prog: { horas: "3 h 09 min", u: [
+    { n: "La escritura como medio para almacenar información", t: [["¿Qué es un algoritmo?", 13, "M"], ["Actividad 1", 21, "E"]] },
+    { n: "Resolución de problemas y las máquinas", t: [["Representación de datos", 19, "M"], ["Actividad 2", 42, "E"], ["Actividad 3", 20, "E"], ["Actividad 4", 10, "E"]] },
+    { n: "Problemas geométricos y estadísticos", t: [["Herramientas para problemas gráficos", 5, "M"], ["Actividad 5", 20, "E"], ["Actividad 6", 11, "E"]] },
+    { n: "Apps para dispositivos móviles", t: [["Desarrollo de apps", 6, "M"], ["Actividad 7", 22, "E"]] },
+  ]},
+  el_prob: { horas: "5 h 11 min", u: [
+    { n: "Análisis crítico de la información", t: [["Representación de la información", 15, "M"], ["Actividad 1", 28, "E"], ["Actividad 2", 37, "E"], ["Actividad 3", 20, "E"], ["Actividad 4", 17, "E"]] },
+    { n: "Media muestral, dispersión y correlación", t: [["Variables estadísticas", 18, "M"], ["Actividad 5", 25, "E"], ["Actividad 6", 30, "E"], ["Actividad 7", 15, "E"]] },
+    { n: "Modelos: distribución normal o binomial", t: [["Modelos de probabilidad", 21, "M"], ["Actividad 8", 14, "E"], ["Actividad 9", 30, "E"]] },
+    { n: "Inferencia estadística", t: [["Inferencia", 19, "M"], ["Actividad 10", 10, "E"], ["Actividad 11", 12, "E"]] },
+  ]},
+  el_qui: { horas: "14 h 35 min", u: [
+    { n: "Fenómenos químicos del entorno", t: [["Óxido-reducción", 13, "M"], ["Estados de oxidación", 21, "M"], ["Método ión-electrón (ácido y básico)", 46, "M"], ["Cambio del número de oxidación", 7, "M"], ["La química del alcotest", 5, "M"], ["Compuestos del cobre", 11, "M"], ["Teorías ácido-base", 8, "M"], ["pH y pOH", 20, "M"], ["Fuerza de ácidos y bases", 17, "M"], ["Indicadores", 12, "M"], ["Soluciones amortiguadoras", 14, "M"], ["Polímeros naturales y artificiales", 44, "M"], ["Composición química del suelo y pH", 13, "M"]] },
+    { n: "Química y tecnología", t: [["¿Qué es la nanoquímica?", 17, "M"], ["El nanomundo de Richard Feynman", 9, "M"], ["Del fullereno a los nanotubos de carbono", 14, "M"], ["Conceptos básicos de la nanoquímica", 15, "M"], ["Aplicaciones de la nanoquímica", 12, "M"], ["Impacto de la nanoquímica", 12, "M"]] },
+    { n: "Espontaneidad y cinética", t: [["Termodinámica: sistema, entorno y universo", 10, "M"], ["Entalpía y ley de Hess", 20, "M"], ["Entropía", 10, "M"], ["Energía libre de Gibbs", 15, "M"], ["Tipos de motores: Otto y Diésel", 27, "M"], ["Velocidad de reacción", 11, "M"], ["Factores que afectan la velocidad", 8, "M"], ["Convertidores catalíticos", 11, "M"], ["Rodaminas y degradación fotocatalítica", 30, "M"], ["NO2 atmosférico", 20, "M"]] },
+    { n: "Química para la sustentabilidad", t: [["Equilibrio químico", 25, "M"], ["Cinética y equilibrio químico", 15, "M"], ["Factores que afectan el equilibrio", 22, "M"], ["Equilibrio químico en la naturaleza", 10, "M"], ["El oxígeno en océanos y en la altura", 14, "M"], ["La hemoglobina", 7, "M"], ["Alteración de los ciclos biogeoquímicos", 11, "M"], ["Prevención y restauración de sistemas naturales", 9, "M"], ["Ciclo del carbono", 10, "M"]] },
+  ]},
+};
+Object.keys(_ELECTIVOS).forEach(function (k) { TEMARIOS[k] = { "3M": _ELECTIVOS[k], "4M": _ELECTIVOS[k] }; });

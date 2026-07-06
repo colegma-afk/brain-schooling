@@ -26,6 +26,8 @@ function initials(name) { return name.split(" ").map(w => w[0]).slice(0, 2).join
 function user(id) { return DB.users.find(u => u.id === id); }
 function course(id) { return DB.courses.find(c => c.id === id); }
 function me() { return user(session); }
+function areaLabel(a) { return a === "prelaboral" ? "Pre-Laboral" : a === "electivo" ? "Electivo" : "Secundaria"; }
+function areaTagClass(a) { return a === "prelaboral" ? "pre" : a === "electivo" ? "elec" : "sec"; }
 function fmtDate(d) {
   if (!d) return "—";
   const dt = new Date(d + (d.length === 10 ? "T00:00" : ""));
@@ -249,7 +251,7 @@ function viewDashboard(c) {
         ${cs.map(cc => `
           <div class="list-item" style="cursor:pointer" onclick="go('course','${cc.id}')">
             <div class="stat-ico" style="background:${cc.color}22;color:${cc.color};width:40px;height:40px;font-size:1.1rem">${cc.icon}</div>
-            <div class="grow"><div class="t">${cc.name}</div><div class="s">${cc.area === "prelaboral" ? "Pre-Laboral" : "Secundaria"} · ${user(cc.teacher).name}</div></div>
+            <div class="grow"><div class="t">${cc.name}</div><div class="s">${areaLabel(cc.area)} · ${user(cc.teacher).name}</div></div>
             <span style="color:var(--text-soft)">›</span>
           </div>`).join("") || "<div class='empty'>Sin cursos.</div>"}
       </div>
@@ -260,29 +262,35 @@ function assignmentsFor2(cs) { return DB.assignments.filter(a => cs.some(c => c.
 /* ============================================================
    CURSOS
 ============================================================ */
+function courseCardHtml(cc) {
+  const nl = DB.lessons.filter(l => l.course === cc.id).length;
+  const na = assignmentsFor(cc.id).length;
+  return `<div class="card course-card" onclick="go('course','${cc.id}')">
+      <div class="course-band" style="background:${cc.color}"></div>
+      <div class="ico">${cc.icon}</div>
+      <h3>${cc.name}</h3>
+      <div class="meta">${user(cc.teacher).name}</div>
+      <p style="font-size:.85rem;color:var(--text-soft);margin-top:8px">${esc(cc.desc)}</p>
+      <div style="display:flex;gap:14px;margin-top:12px;font-size:.8rem;color:var(--text-soft)">
+        <span>📖 ${nl} lecciones</span><span>📝 ${na} tareas</span>
+      </div>
+      <span class="tag ${areaTagClass(cc.area)}">${areaLabel(cc.area)}</span>
+    </div>`;
+}
 function viewCourses(c) {
   const cs = myCourses();
   const canCreate = me().role !== "estudiante";
+  const groups = [["secundaria", "📚 Formación General"], ["electivo", "🎓 Electivos (3° y 4° medio)"], ["prelaboral", "💼 Formación Laboral"]];
+  const sections = groups.map(([area, title]) => {
+    const list = cs.filter(cc => cc.area === area);
+    if (!list.length) return "";
+    return `<h3 style="font-size:1rem;margin:22px 0 12px;color:var(--text-soft)">${title}</h3>
+      <div class="grid grid-3">${list.map(courseCardHtml).join("")}</div>`;
+  }).join("");
   c.innerHTML = `
     <div class="section-head"><h2>${me().role === "estudiante" ? "Mis cursos" : "Cursos"}</h2>
       ${canCreate ? `<button class="btn btn-primary btn-sm" onclick="editCourse()">+ Nuevo curso</button>` : ""}</div>
-    <div class="grid grid-3">
-      ${cs.map(cc => {
-        const nl = DB.lessons.filter(l => l.course === cc.id).length;
-        const na = assignmentsFor(cc.id).length;
-        return `<div class="card course-card" onclick="go('course','${cc.id}')">
-          <div class="course-band" style="background:${cc.color}"></div>
-          <div class="ico">${cc.icon}</div>
-          <h3>${cc.name}</h3>
-          <div class="meta">${user(cc.teacher).name}</div>
-          <p style="font-size:.85rem;color:var(--text-soft);margin-top:8px">${esc(cc.desc)}</p>
-          <div style="display:flex;gap:14px;margin-top:12px;font-size:.8rem;color:var(--text-soft)">
-            <span>📖 ${nl} lecciones</span><span>📝 ${na} tareas</span>
-          </div>
-          <span class="tag ${cc.area === "prelaboral" ? "pre" : "sec"}">${cc.area === "prelaboral" ? "Pre-Laboral" : "Secundaria"}</span>
-        </div>`;
-      }).join("") || "<div class='empty'><span class='e'>📚</span>No tenés cursos aún.</div>"}
-    </div>`;
+    ${sections || "<div class='empty'><span class='e'>📚</span>No tenés cursos aún.</div>"}`;
 }
 
 let courseTab = "lessons";

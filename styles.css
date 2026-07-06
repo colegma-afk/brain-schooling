@@ -179,6 +179,8 @@ body.dark .nav-item.active { color: #c9c3ff; }
 }
 .tag.sec { background: var(--brand-light); color: var(--brand-dark); }
 .tag.pre { background: var(--accent-light); color: #0d8478; }
+.tag.elec { background: #fde7cf; color: #a86a12; }
+body.dark .tag.elec { background: #3d3320; color: #f0c078; }
 body.dark .tag.sec { color: #c9c3ff; }
 body.dark .tag.pre { color: #6ee7d8; }
 
