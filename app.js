@@ -122,6 +122,7 @@ function navFor(role) {
   if (role === "estudiante") {
     base.push({ id: "grades", ic: "📊", label: "Mis notas" });
     base.push({ id: "prelabor", ic: "💼", label: "Pre-Laboral" });
+    base.push({ id: "university", ic: "🎓", label: "Universidad" });
   }
   if (role === "docente") {
     base.push({ id: "gradebook", ic: "📊", label: "Calificaciones" });
@@ -137,7 +138,7 @@ const TITLES = {
   dashboard: "Inicio", courses: "Cursos", assignments: "Tareas", calendar: "Calendario",
   messages: "Mensajes", grades: "Mis notas", prelabor: "Módulo Pre-Laboral",
   gradebook: "Calificaciones", attendance: "Asistencia", people: "Usuarios", reports: "Reportes",
-  course: "Curso",
+  course: "Curso", university: "Orientación Universitaria",
 };
 function renderApp() {
   const u = me();
@@ -188,6 +189,7 @@ function renderView() {
     case "messages": return viewMessages(c);
     case "grades": return viewGrades(c);
     case "prelabor": return viewPrelabor(c);
+    case "university": return viewUniversity(c);
     case "gradebook": return viewGradebook(c);
     case "attendance": return viewAttendance(c);
     case "people": return viewPeople(c);
@@ -940,6 +942,157 @@ function addSkill() { const n = el("new-skill").value.trim(); if (!n) return; pr
 function addGoal() { const n = el("new-goal").value.trim(); if (!n) return; prelaborData().goals.push({ id: uid("g"), text: n, done: false }); saveDB(); renderView(); }
 function toggleGoal(id) { const g = prelaborData().goals.find(x => x.id === id); g.done = !g.done; saveDB(); renderView(); }
 function delGoal(id) { const d = prelaborData(); d.goals = d.goals.filter(x => x.id !== id); saveDB(); renderView(); }
+
+/* ============================================================
+   ORIENTACIÓN UNIVERSITARIA (DEMRE / PAES / becas)
+============================================================ */
+let uniTab = "info";
+const PAES_FACTORS = [
+  { id: "nem", name: "NEM (Notas de Enseñanza Media)", w: 20 },
+  { id: "rank", name: "Ranking de Notas", w: 20 },
+  { id: "cl", name: "Competencia Lectora", w: 30 },
+  { id: "m1", name: "Competencia Matemática 1 (M1)", w: 30 },
+  { id: "m2", name: "Competencia Matemática 2 (M2)", w: 0 },
+  { id: "cien", name: "Ciencias (electiva)", w: 0 },
+  { id: "hist", name: "Historia y Cs. Sociales (electiva)", w: 0 },
+];
+const PAES_PRESETS = {
+  ingenieria: { nem: 20, rank: 20, cl: 10, m1: 30, m2: 20, cien: 0, hist: 0 },
+  salud: { nem: 20, rank: 25, cl: 15, m1: 15, m2: 0, cien: 25, hist: 0 },
+  humanista: { nem: 20, rank: 20, cl: 30, m1: 10, m2: 0, cien: 0, hist: 20 },
+  general: { nem: 20, rank: 20, cl: 30, m1: 30, m2: 0, cien: 0, hist: 0 },
+};
+const BECAS = [
+  { ic: "🆓", name: "Gratuidad", who: "60% de menores ingresos del país", covers: "Matrícula y arancel regulado completo de la carrera (universidad, IP o CFT acreditados).", tag: "ok" },
+  { ic: "🎓", name: "Beca Bicentenario", who: "70% de menores ingresos · universidades del CRUCH", covers: "Arancel de referencia anual de la carrera universitaria.", tag: "info" },
+  { ic: "📗", name: "Beca Juan Gómez Millas", who: "70% de menores ingresos · ≥ 510 pts promedio PAES obligatorias", covers: "Hasta ~$1.150.000 del arancel anual.", tag: "info" },
+  { ic: "🔧", name: "Beca Nuevo Milenio", who: "70% de menores ingresos · carreras Técnico-Profesionales (CFT/IP)", covers: "Hasta ~$860.000 del arancel anual según decil.", tag: "info" },
+  { ic: "🍎", name: "Beca Vocación de Profesor", who: "Estudiantes de Pedagogía · puntaje PAES destacado (desde ~595 pts)", covers: "Matrícula + arancel completo (y más beneficios según puntaje).", tag: "info" },
+  { ic: "⭐", name: "Beca de Excelencia Académica (BEA)", who: "10% de mejores egresados de su establecimiento · 80% menores ingresos", covers: "Hasta ~$1.150.000 del arancel anual.", tag: "info" },
+  { ic: "💳", name: "Crédito con Aval del Estado (CAE)", who: "Estudiantes con necesidad de financiamiento", covers: "Crédito para financiar el arancel; se paga una vez egresado.", tag: "warn" },
+];
+function viewUniversity(c) {
+  let body = "";
+  if (uniTab === "info") body = uniInfo();
+  else if (uniTab === "pruebas") body = uniPruebas();
+  else if (uniTab === "calc") body = uniCalc();
+  else if (uniTab === "becas") body = uniBecas();
+  c.innerHTML = `
+    <div style="margin-bottom:16px"><h2 style="font-size:1.3rem">🎓 Orientación Universitaria</h2>
+      <p style="color:var(--text-soft)">Prepará tu ingreso a la educación superior: PAES (DEMRE), ponderación de puntajes y becas.</p></div>
+    <div class="tabs">
+      <button class="tab ${uniTab === "info" ? "active" : ""}" onclick="uniTab='info';renderView()">ℹ️ ¿Qué es la PAES?</button>
+      <button class="tab ${uniTab === "pruebas" ? "active" : ""}" onclick="uniTab='pruebas';renderView()">📝 Las pruebas</button>
+      <button class="tab ${uniTab === "calc" ? "active" : ""}" onclick="uniTab='calc';renderView()">🧮 Calculadora ponderada</button>
+      <button class="tab ${uniTab === "becas" ? "active" : ""}" onclick="uniTab='becas';renderView()">💰 Becas</button>
+    </div>${body}`;
+  if (uniTab === "calc") calcPaes();
+}
+function uniInfo() {
+  return `<div class="grid grid-2">
+    <div class="card"><h3>ℹ️ ¿Qué es la PAES?</h3>
+      <p style="font-size:.92rem">La <b>PAES</b> (Prueba de Acceso a la Educación Superior) es el examen que administra el <b>DEMRE</b> (Universidad de Chile) para postular a las universidades del Sistema de Acceso. Reemplazó a la antigua PSU/PDT.</p>
+      <ul style="margin:10px 0 0 20px;font-size:.9rem"><li>Los puntajes van de <b>100 a 1.000 puntos</b>.</li><li>Se rinde en papel, una o dos veces al año (proceso regular e invierno).</li><li>Tus puntajes se combinan con tus notas (NEM y Ranking).</li></ul>
+    </div>
+    <div class="card"><h3>✅ Requisitos para postular</h3>
+      <ul style="margin:0 0 0 20px;font-size:.9rem"><li>Rendir las <b>dos pruebas obligatorias</b>: Competencia Lectora y Competencia Matemática 1 (M1).</li><li>Rendir <b>al menos una prueba electiva</b> (Ciencias o Historia y Cs. Sociales).</li><li>Obtener un promedio <b>≥ 458 puntos</b> entre Competencia Lectora y M1 para quedar habilitado/a.</li></ul>
+      <div style="margin-top:12px;background:var(--brand-light);border-radius:10px;padding:12px;font-size:.85rem">
+        📅 <b>Proceso:</b> inscripción y rendición se gestionan en <b>demre.cl</b>; la postulación a carreras es posterior a conocer los resultados.
+      </div>
+    </div>
+    <div class="card" style="grid-column:1/-1"><h3>🧭 Ruta hacia la universidad</h3>
+      <div class="grid grid-4" style="margin-top:4px">
+        ${["1️⃣ Inscríbete en DEMRE|Crea tu cuenta y elige tus pruebas", "2️⃣ Prepárate|Estudia con los temarios oficiales", "3️⃣ Rinde la PAES|Pruebas obligatorias + electivas", "4️⃣ Postula y financia|Ordena carreras y postula a becas (FUAS)"].map(s => {
+          const [t, d] = s.split("|"); return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px"><b style="font-size:.92rem">${t}</b><div style="font-size:.82rem;color:var(--text-soft);margin-top:4px">${d}</div></div>`;
+        }).join("")}
+      </div>
+    </div>
+    <div class="card" style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <b>🔗 Sitios oficiales:</b>
+      <a class="btn btn-ghost btn-sm" href="https://demre.cl" target="_blank" rel="noopener">demre.cl</a>
+      <a class="btn btn-ghost btn-sm" href="https://portal.beneficiosestudiantiles.cl" target="_blank" rel="noopener">beneficiosestudiantiles.cl</a>
+      <a class="btn btn-ghost btn-sm" href="https://fuas.cl" target="_blank" rel="noopener">fuas.cl</a>
+      <a class="btn btn-ghost btn-sm" href="https://acceso.mineduc.cl" target="_blank" rel="noopener">acceso.mineduc.cl</a>
+    </div>
+  </div>`;
+}
+function uniPruebas() {
+  const rows = [
+    ["📖 Competencia Lectora", "Obligatoria", "Comprensión y análisis de textos.", "ok"],
+    ["🔢 Competencia Matemática 1 (M1)", "Obligatoria", "Matemática de 7° básico a 2° medio.", "ok"],
+    ["➗ Competencia Matemática 2 (M2)", "Según carrera", "Matemática de 3° y 4° medio (ingenierías, ciencias).", "warn"],
+    ["🔬 Ciencias", "Electiva", "Biología, Física, Química o módulo Técnico-Profesional.", "info"],
+    ["🏛️ Historia y Cs. Sociales", "Electiva", "Historia, geografía, economía y formación ciudadana.", "info"],
+  ];
+  return `<div class="card"><h3>📝 Pruebas de la PAES</h3>
+    <table class="tbl"><thead><tr><th>Prueba</th><th>Tipo</th><th>Contenido</th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td><b>${r[0]}</b></td><td><span class="pill ${r[3]}">${r[1]}</span></td><td style="color:var(--text-soft)">${r[2]}</td></tr>`).join("")}
+    </tbody></table>
+    <p style="font-size:.85rem;color:var(--text-soft);margin-top:14px">💡 Debes inscribir las 2 obligatorias y al menos 1 electiva. Rinde <b>M2</b> solo si tu carrera la exige. Los temarios oficiales están en demre.cl.</p>
+  </div>
+  <div class="card" style="margin-top:16px"><h3>📊 Factores de selección</h3>
+    <p style="font-size:.9rem">Tu <b>puntaje ponderado</b> se construye combinando cinco factores; cada universidad y carrera les asigna un porcentaje que suma 100%:</p>
+    <div class="grid grid-3" style="margin-top:10px">
+      ${[["NEM", "Promedio de notas de 1° a 4° medio, en escala 100-1000."], ["Ranking de Notas", "Premia tu posición relativa respecto a tu colegio."], ["Competencia Lectora", "Puntaje de la prueba obligatoria."], ["Competencia Matemática M1", "Puntaje de la prueba obligatoria."], ["Electiva / M2", "Ciencias, Historia o Matemática 2."], ["Ponderación", "Los % los define cada carrera (NEM y Ranking suelen pesar 10-30% c/u)."]].map(x => `<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px"><b style="font-size:.88rem">${x[0]}</b><div style="font-size:.8rem;color:var(--text-soft);margin-top:3px">${x[1]}</div></div>`).join("")}
+    </div>
+  </div>`;
+}
+function uniCalc() {
+  return `<div class="card"><h3>🧮 Calculadora de puntaje ponderado</h3>
+    <p style="font-size:.88rem;color:var(--text-soft);margin-bottom:12px">Ingresá tu puntaje en cada factor (100-1000) y el porcentaje de ponderación que le da la carrera. El total de ponderaciones debe sumar 100%.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <span style="font-size:.82rem;font-weight:700;color:var(--text-soft);align-self:center">Ejemplos:</span>
+      <button class="btn btn-ghost btn-sm" onclick="setPaesPreset('general')">General</button>
+      <button class="btn btn-ghost btn-sm" onclick="setPaesPreset('ingenieria')">Ingeniería</button>
+      <button class="btn btn-ghost btn-sm" onclick="setPaesPreset('salud')">Salud</button>
+      <button class="btn btn-ghost btn-sm" onclick="setPaesPreset('humanista')">Humanista</button>
+    </div>
+    <table class="tbl"><thead><tr><th>Factor</th><th style="width:130px">Ponderación %</th><th style="width:130px">Puntaje</th></tr></thead><tbody>
+      ${PAES_FACTORS.map(f => `<tr>
+        <td><b>${f.name}</b></td>
+        <td><input id="pw-${f.id}" type="number" min="0" max="100" value="${f.w}" oninput="calcPaes()" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg)"></td>
+        <td><input id="pp-${f.id}" type="number" min="100" max="1000" placeholder="—" oninput="calcPaes()" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg)"></td>
+      </tr>`).join("")}
+    </tbody></table>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:18px;background:var(--brand-light);border-radius:12px;padding:16px 20px">
+      <div>Total ponderación: <span id="paes-sum" class="pill">0%</span></div>
+      <div style="text-align:right"><div style="font-size:.8rem;color:var(--text-soft)">Puntaje ponderado</div><div id="paes-pond" class="score-big" style="color:var(--brand);line-height:1">0</div></div>
+    </div>
+    <p style="font-size:.8rem;color:var(--text-soft);margin-top:10px">ℹ️ Cálculo referencial. Cada carrera fija sus ponderaciones y puntajes mínimos; confirmá en el sitio de cada universidad y en demre.cl.</p>
+  </div>`;
+}
+function setPaesPreset(key) {
+  const p = PAES_PRESETS[key];
+  PAES_FACTORS.forEach(f => { const w = el("pw-" + f.id); if (w) w.value = p[f.id]; });
+  calcPaes(); toast("Ejemplo aplicado: ajustá tus puntajes");
+}
+function calcPaes() {
+  let wsum = 0, acc = 0;
+  PAES_FACTORS.forEach(f => {
+    const w = parseFloat((el("pw-" + f.id) || {}).value) || 0;
+    const p = parseFloat((el("pp-" + f.id) || {}).value) || 0;
+    wsum += w; acc += w * p;
+  });
+  const sumEl = el("paes-sum"), pondEl = el("paes-pond");
+  if (!sumEl || !pondEl) return;
+  sumEl.textContent = Math.round(wsum) + "%";
+  sumEl.className = "pill " + (Math.round(wsum) === 100 ? "ok" : "warn");
+  pondEl.textContent = Math.round(acc / 100);
+}
+function uniBecas() {
+  return `<div class="card" style="margin-bottom:16px;background:var(--accent-light);border:none">
+      <b>💰 ¿Cómo se postula?</b>
+      <p style="font-size:.88rem;margin-top:4px">La mayoría de las becas y la Gratuidad se solicitan completando el <b>FUAS</b> (Formulario Único de Acreditación Socioeconómica) en <b>fuas.cl</b>, dentro del plazo que fija el Mineduc. La asignación depende de tus ingresos familiares, tu rendimiento y tu puntaje PAES.</p>
+    </div>
+    <div class="grid grid-2">
+    ${BECAS.map(b => `<div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div class="stat-ico" style="width:42px;height:42px;font-size:1.2rem;background:var(--brand-light)">${b.ic}</div><h3 style="margin:0">${b.name}</h3></div>
+      <div style="font-size:.8rem"><span class="pill ${b.tag}">Dirigida a</span> <span style="color:var(--text-soft)">${b.who}</span></div>
+      <p style="font-size:.88rem;margin-top:8px">${b.covers}</p>
+    </div>`).join("")}
+    </div>
+    <p style="font-size:.8rem;color:var(--text-soft);margin-top:14px">ℹ️ Montos y requisitos referenciales (pueden variar cada año). No se puede tener Gratuidad y otra beca de arancel a la vez. Verificá siempre en <b>beneficiosestudiantiles.cl</b>.</p>`;
+}
 
 /* ============================================================
    ADMIN: USUARIOS
