@@ -99,12 +99,12 @@ function doLogin(e) {
   const u = DB.users.find(x => x.email.toLowerCase() === email && x.pass === pass);
   if (!u) { toast("Credenciales incorrectas"); return; }
   session = u.id; localStorage.setItem(SESSION_KEY, session);
-  view = "dashboard"; renderApp();
+  nivelSel = null; view = "dashboard"; renderApp();
 }
 function quickLogin(email) {
   const u = DB.users.find(x => x.email === email);
   session = u.id; localStorage.setItem(SESSION_KEY, session);
-  view = "dashboard"; renderApp();
+  nivelSel = null; view = "dashboard"; renderApp();
 }
 function logout() { session = null; localStorage.removeItem(SESSION_KEY); renderLogin(); }
 
@@ -284,13 +284,18 @@ function viewCourses(c) {
 }
 
 let courseTab = "lessons";
+let nivelSel = null;
+const NIVELES = [["1M", "1° medio"], ["2M", "2° medio"], ["3M", "3° medio"], ["4M", "4° medio"]];
+function gradeToNivel(g) { const m = String(g || "").match(/([1-4])/); return m ? m[1] + "M" : null; }
+function lessonNivel(l) { return l.nivel || "1M"; }
 function viewCourse(c) {
   const cc = course(viewArg);
   if (!cc) { c.innerHTML = "<div class='empty'>Curso no encontrado.</div>"; return; }
+  if (nivelSel === null) nivelSel = gradeToNivel(me().grade) || "1M";
   const isTeacher = me().role !== "estudiante";
-  const lessons = DB.lessons.filter(l => l.course === cc.id);
+  const lessons = DB.lessons.filter(l => l.course === cc.id && lessonNivel(l) === nivelSel);
   const asgs = assignmentsFor(cc.id);
-  const quizzes = DB.quizzes.filter(q => q.course === cc.id);
+  const quizzes = DB.quizzes.filter(q => q.course === cc.id && lessonNivel(q) === nivelSel);
   const studs = courseStudents(cc.id);
 
   let tabBody = "";
@@ -337,6 +342,13 @@ function viewCourse(c) {
       ${tabBtn("quiz", "🧩 Evaluaciones")}
       ${tabBtn("people", "👥 Integrantes")}
     </div>
+    ${(courseTab === "lessons" || courseTab === "quiz") ? `<div class="nivel-bar">
+      <span class="nivel-lbl">Nivel:</span>
+      ${NIVELES.map(([v, lbl]) => {
+        const n = DB.lessons.filter(l => l.course === cc.id && lessonNivel(l) === v).length;
+        return `<button class="nivel-chip ${nivelSel === v ? "active" : ""}" onclick="nivelSel='${v}';renderView()">${lbl}${n ? ` <b>${n}</b>` : ""}</button>`;
+      }).join("")}
+    </div>` : ""}
     <div class="card">${tabBody}</div>`;
 }
 function tabBtn(id, label) { return `<button class="tab ${courseTab === id ? "active" : ""}" onclick="courseTab='${id}';renderView()">${label}</button>`; }

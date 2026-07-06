@@ -302,6 +302,18 @@ body.dark .cal-ev.due { background: #3d3320; color: #f0c078; }
 .progress { height: 9px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 .progress .fill { height: 100%; background: var(--accent); border-radius: 6px; }
 
+/* ===== Selector de nivel ===== */
+.nivel-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.nivel-lbl { font-size: .8rem; font-weight: 700; color: var(--text-soft); margin-right: 2px; }
+.nivel-chip {
+  padding: 7px 14px; border: 1.5px solid var(--border); background: var(--surface);
+  color: var(--text-soft); border-radius: 20px; font-size: .84rem; font-weight: 700;
+}
+.nivel-chip:hover { border-color: var(--brand); color: var(--brand); }
+.nivel-chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+.nivel-chip b { opacity: .7; font-weight: 700; }
+.nivel-chip.active b { opacity: .9; }
+
 /* ===== Video-lección ===== */
 .modal-box.video { max-width: 780px; padding: 0; overflow: hidden; }
 .video-stage {
