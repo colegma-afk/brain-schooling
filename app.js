@@ -320,6 +320,8 @@ function viewCourse(c) {
         <div class="grow"><div class="t">${esc(q.title)}</div><div class="s">${q.questions.length} preguntas · autocorregible</div></div>
         <button class="btn btn-accent btn-sm" onclick="startQuiz('${q.id}')">Comenzar</button>
       </div>`).join("") || "<div class='empty'>Sin evaluaciones.</div>";
+  } else if (courseTab === "temario") {
+    tabBody = renderTemario(cc.id);
   } else if (courseTab === "people") {
     tabBody = `<div class="list-item"><div class="avatar" style="background:${user(cc.teacher).color}">${initials(user(cc.teacher).name)}</div>
         <div class="grow"><div class="t">${user(cc.teacher).name}</div><div class="s">Docente</div></div></div>
@@ -340,11 +342,12 @@ function viewCourse(c) {
     </div>
     <div class="tabs">
       ${tabBtn("lessons", "📖 Lecciones")}
+      ${(typeof TEMARIOS !== "undefined" && TEMARIOS[cc.id]) ? tabBtn("temario", "📋 Temario") : ""}
       ${tabBtn("asg", "📝 Tareas")}
       ${tabBtn("quiz", "🧩 Evaluaciones")}
       ${tabBtn("people", "👥 Integrantes")}
     </div>
-    ${(courseTab === "lessons" || courseTab === "quiz") ? `<div class="nivel-bar">
+    ${(courseTab === "lessons" || courseTab === "quiz" || courseTab === "temario") ? `<div class="nivel-bar">
       <span class="nivel-lbl">Nivel:</span>
       ${NIVELES.map(([v, lbl]) => {
         const n = DB.lessons.filter(l => l.course === cc.id && lessonNivel(l) === v).length;
@@ -354,6 +357,33 @@ function viewCourse(c) {
     <div class="card">${tabBody}</div>`;
 }
 function tabBtn(id, label) { return `<button class="tab ${courseTab === id ? "active" : ""}" onclick="courseTab='${id}';renderView()">${label}</button>`; }
+
+function renderTemario(cid) {
+  const data = (typeof TEMARIOS !== "undefined" && TEMARIOS[cid]) ? TEMARIOS[cid][nivelSel] : null;
+  if (!data) return "<div class='empty'><span class='e'>📋</span>No hay temario cargado para este nivel.</div>";
+  let totMin = 0, totMat = 0, totEj = 0;
+  data.u.forEach(u => u.t.forEach(t => { totMin += t[1] || 0; if (t[2] === "E") totEj++; else totMat++; }));
+  const hrs = Math.floor(totMin / 60), min = totMin % 60;
+  const unidades = data.u.map((u, i) => {
+    const rows = u.t.map(t => `<div class="tem-row">
+        <span class="tem-ico ${t[2] === "E" ? "ej" : "ma"}">${t[2] === "E" ? "✏️" : "📖"}</span>
+        <span class="tem-name">${esc(t[0])}</span>
+        <span class="tem-min">${t[1] ? t[1] + " min" : "—"}</span>
+      </div>`).join("");
+    return `<div class="tem-unit">
+      <div class="tem-uhead">${u.a ? `<span class="tem-area">${esc(u.a)}</span>` : ""}<b>${i + 1}. ${esc(u.n)}</b><span class="tem-count">${u.t.length} clases</span></div>
+      ${rows}
+    </div>`;
+  }).join("");
+  return `<div class="tem-summary">
+      <div><b>📋 Temario oficial</b> · Currículum Nacional (DEMRE)</div>
+      <div class="tem-stats">
+        <span class="pill info">⏱️ ${data.horas || (hrs + "h " + min + "min")}</span>
+        <span class="pill ok">📖 ${totMat} materias</span>
+        <span class="pill warn">✏️ ${totEj} ejercicios</span>
+      </div>
+    </div>${unidades}`;
+}
 
 function asgRow(a) {
   const isStudent = me().role === "estudiante";
