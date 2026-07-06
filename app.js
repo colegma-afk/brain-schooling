@@ -295,7 +295,7 @@ function viewCourse(c) {
       ${lessons.map(l => `
         <div class="list-item">
           <div class="stat-ico" style="background:${cc.color}22;color:${cc.color};width:40px;height:40px;font-size:1rem">📖</div>
-          <div class="grow"><div class="t">${esc(l.title)}</div><div class="s">⏱️ ${l.mins} min de lectura</div></div>
+          <div class="grow"><div class="t">${esc(l.title)}</div><div class="s">⏱️ ${l.mins} min${l.oa ? ` · <span class="pill info" style="font-size:.68rem;padding:1px 8px">${esc(l.oa)}</span>` : ""}</div></div>
           <button class="btn btn-ghost btn-sm" onclick="openLesson('${l.id}')">Ver lección</button>
         </div>`).join("") || "<div class='empty'>Sin lecciones aún.</div>"}`;
   } else if (courseTab === "asg") {
@@ -362,7 +362,7 @@ function asgRow(a) {
 function openLesson(lid) {
   const l = DB.lessons.find(x => x.id === lid);
   openModal(`<h3>📖 ${esc(l.title)}</h3>
-    <div style="color:var(--text-soft);font-size:.82rem;margin-bottom:14px">${course(l.course).name} · ${l.mins} min</div>
+    <div style="color:var(--text-soft);font-size:.82rem;margin-bottom:14px">${course(l.course).name} · ${l.mins} min${l.oa ? ` · <b>${esc(l.oa)}</b> (Currículum Nacional)` : ""}</div>
     <div class="lesson-body">${l.body}</div>
     <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal();toast('¡Lección completada! 🎉')">Marcar como leída</button></div>`);
 }
