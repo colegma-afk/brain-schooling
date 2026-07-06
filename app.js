@@ -442,28 +442,32 @@ function speakSlide() {
   // resalta viñetas progresivamente
   if (s.kind === "list") animateBullets(s);
   const advance = () => { if (videoState && videoState.playing) videoNext(true); };
+  const RATE = 0.8; // narración pausada
   if (window.speechSynthesis) {
     try { speechSynthesis.cancel(); } catch (e) {}
     const u = new SpeechSynthesisUtterance(s.narration);
-    u.lang = "es-ES"; u.rate = 1; u.pitch = 1;
+    u.lang = "es-MX"; u.rate = RATE; u.pitch = 1;
     const voices = speechSynthesis.getVoices();
-    const v = voices.find(x => /es[-_]?(419|MX|CL|ES|US)/i.test(x.lang)) || voices.find(x => /^es/i.test(x.lang));
+    // prioriza voz de español mexicano; si no hay, cae a latinoamérica y luego a cualquier español
+    const v = voices.find(x => /es[-_]?MX/i.test(x.lang) || /mexic|paulina|juan|angelica/i.test(x.name))
+      || voices.find(x => /es[-_]?(419|US|CO|CL|AR)/i.test(x.lang))
+      || voices.find(x => /^es/i.test(x.lang));
     if (v) u.voice = v;
     u.onend = advance;
     videoState._u = u;
     speechSynthesis.speak(u);
-    // respaldo por si no hay motor de voz audible: avanza por tiempo estimado
-    const est = Math.max(3500, s.narration.split(/\s+/).length / 2.6 * 1000 + 800);
+    // respaldo por si no hay motor de voz audible: avanza por tiempo estimado (ajustado a la velocidad)
+    const est = Math.max(4000, (s.narration.split(/\s+/).length / 2.6 * 1000) / RATE + 800);
     videoState.timer = setTimeout(() => { if (videoState && videoState.playing && (!speechSynthesis.speaking)) advance(); }, est);
   } else {
-    const est = Math.max(3500, s.narration.split(/\s+/).length / 2.6 * 1000);
+    const est = Math.max(4000, (s.narration.split(/\s+/).length / 2.6 * 1000) / RATE);
     videoState.timer = setTimeout(advance, est);
   }
 }
 function animateBullets(s) {
   videoState.spokenIdx = -1;
   const total = s.items.length;
-  const per = Math.max(1200, (s.narration.split(/\s+/).length / 2.6 * 1000) / (total + 1));
+  const per = Math.max(1500, ((s.narration.split(/\s+/).length / 2.6 * 1000) / 0.8) / (total + 1));
   let k = 0;
   const step = () => {
     if (!videoState || videoState.slides[videoState.i] !== s || !videoState.playing) return;
