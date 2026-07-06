@@ -38,8 +38,12 @@ function toast(msg) {
   const t = el("toast"); t.textContent = msg; t.classList.remove("hidden");
   clearTimeout(t._t); t._t = setTimeout(() => t.classList.add("hidden"), 2600);
 }
-function openModal(html) { el("modal-box").innerHTML = html; el("modal-overlay").classList.remove("hidden"); }
-function closeModal() { el("modal-overlay").classList.add("hidden"); }
+function openModal(html) { el("modal-box").innerHTML = html; el("modal-box").className = "modal-box"; el("modal-overlay").classList.remove("hidden"); }
+function closeModal() {
+  stopVideo();
+  el("modal-overlay").classList.add("hidden");
+  el("modal-box").className = "modal-box";
+}
 
 /* ---------- consultas de dominio ---------- */
 function myCourses() {
@@ -296,6 +300,7 @@ function viewCourse(c) {
         <div class="list-item">
           <div class="stat-ico" style="background:${cc.color}22;color:${cc.color};width:40px;height:40px;font-size:1rem">📖</div>
           <div class="grow"><div class="t">${esc(l.title)}</div><div class="s">⏱️ ${l.mins} min${l.oa ? ` · <span class="pill info" style="font-size:.68rem;padding:1px 8px">${esc(l.oa)}</span>` : ""}</div></div>
+          <button class="btn btn-accent btn-sm" onclick="openVideo('${l.id}')" title="Video narrado">▶ Video</button>
           <button class="btn btn-ghost btn-sm" onclick="openLesson('${l.id}')">Ver lección</button>
         </div>`).join("") || "<div class='empty'>Sin lecciones aún.</div>"}`;
   } else if (courseTab === "asg") {
@@ -364,7 +369,141 @@ function openLesson(lid) {
   openModal(`<h3>📖 ${esc(l.title)}</h3>
     <div style="color:var(--text-soft);font-size:.82rem;margin-bottom:14px">${course(l.course).name} · ${l.mins} min${l.oa ? ` · <b>${esc(l.oa)}</b> (Currículum Nacional)` : ""}</div>
     <div class="lesson-body">${l.body}</div>
-    <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal();toast('¡Lección completada! 🎉')">Marcar como leída</button></div>`);
+    <div class="modal-actions"><button class="btn btn-accent" onclick="openVideo('${l.id}')">▶ Ver en video</button>
+      <button class="btn btn-primary" onclick="closeModal();toast('¡Lección completada! 🎉')">Marcar como leída</button></div>`);
+}
+
+/* ---------- video-lección narrada ---------- */
+let videoState = null;
+function stripTags(html) { const d = document.createElement("div"); d.innerHTML = html; return d.textContent.replace(/\s+/g, " ").trim(); }
+function buildSlides(l) {
+  const cc = course(l.course);
+  const slides = [];
+  slides.push({ kind: "intro", icon: cc.icon, title: l.title, sub: cc.name + (l.oa ? " · " + l.oa : ""),
+    narration: `Bienvenidos a la lección: ${l.title}, de la asignatura ${cc.name}. ${l.oa ? "Objetivo de aprendizaje " + l.oa + " del Currículum Nacional." : ""} Comencemos.` });
+  const tmp = document.createElement("div"); tmp.innerHTML = l.body;
+  tmp.childNodes.forEach(node => {
+    if (node.nodeType !== 1) return;
+    const tag = node.tagName.toLowerCase();
+    if (tag === "p") {
+      const t = stripTags(node.innerHTML);
+      if (t) slides.push({ kind: "text", title: "Concepto clave", html: node.innerHTML, narration: t });
+    } else if (tag === "ul" || tag === "ol") {
+      const items = [...node.querySelectorAll("li")].map(li => li.innerHTML);
+      slides.push({ kind: "list", title: "Puntos clave", items, narration: "Puntos clave. " + items.map(stripTags).join(". ") + "." });
+    }
+  });
+  slides.push({ kind: "end", icon: "🎓", title: "¡Muy bien!", sub: "Completaste la lección",
+    narration: `Con esto terminamos la lección ${l.title}. Ahora te invito a resolver la evaluación autocorregible y las tareas del curso. ¡Excelente trabajo!` });
+  return slides;
+}
+function openVideo(lid) {
+  const l = DB.lessons.find(x => x.id === lid);
+  const cc = course(l.course);
+  videoState = { lesson: l, slides: buildSlides(l), i: 0, playing: true, timer: null, spokenIdx: -1 };
+  el("modal-box").className = "modal-box video";
+  el("modal-box").innerHTML = `
+    <div class="video-stage" id="v-stage" style="background:linear-gradient(135deg, ${cc.color} 0%, #4438a8 130%)"></div>
+    <div class="video-caption"><div class="lbl">🔊 Narración</div><div id="v-cap"></div></div>
+    <div class="video-bar"><div class="vfill" id="v-fill"></div></div>
+    <div class="video-controls">
+      <button class="vbtn" onclick="videoSeek(-1)" title="Anterior">⏮</button>
+      <button class="vbtn play" id="v-play" onclick="videoToggle()" title="Reproducir/Pausar">⏸</button>
+      <button class="vbtn" onclick="videoSeek(1)" title="Siguiente">⏭</button>
+      <span class="vmeta" id="v-meta"></span>
+      <button class="btn btn-ghost btn-sm vclose" onclick="closeModal()">Cerrar</button>
+    </div>`;
+  el("modal-overlay").classList.remove("hidden");
+  renderSlide(); speakSlide();
+}
+function renderSlide() {
+  if (!videoState) return;
+  const s = videoState.slides[videoState.i];
+  let inner = "";
+  if (s.kind === "intro" || s.kind === "end") {
+    inner = `<div class="vslide-ico">${s.icon}</div><div class="vslide-title">${esc(s.title)}</div><div class="vslide-sub">${esc(s.sub)}</div>`;
+  } else if (s.kind === "text") {
+    inner = `<div class="vslide-title" style="font-size:1.3rem">${esc(s.title)}</div><div class="vslide-text">${s.html}</div>`;
+  } else if (s.kind === "list") {
+    inner = `<div class="vslide-title" style="font-size:1.4rem;margin-bottom:16px">${esc(s.title)}</div>
+      <ul class="vslide-list">${s.items.map((it, k) => `<li id="v-li-${k}" class="${k <= videoState.spokenIdx ? "spoken" : ""}">${it}</li>`).join("")}</ul>`;
+  }
+  el("v-stage").innerHTML = `<span class="vtag">🎬 ${esc(course(videoState.lesson.course).name)}</span>
+    <span class="vnum">${videoState.i + 1} / ${videoState.slides.length}</span>${inner}`;
+  el("v-cap").textContent = s.narration;
+  el("v-meta").textContent = `Lámina ${videoState.i + 1} de ${videoState.slides.length}`;
+  el("v-fill").style.width = ((videoState.i + 1) / videoState.slides.length * 100) + "%";
+  el("v-play").textContent = videoState.playing ? "⏸" : "▶";
+}
+function speakSlide() {
+  if (!videoState || !videoState.playing) return;
+  const s = videoState.slides[videoState.i];
+  clearTimeout(videoState.timer);
+  // resalta viñetas progresivamente
+  if (s.kind === "list") animateBullets(s);
+  const advance = () => { if (videoState && videoState.playing) videoNext(true); };
+  if (window.speechSynthesis) {
+    try { speechSynthesis.cancel(); } catch (e) {}
+    const u = new SpeechSynthesisUtterance(s.narration);
+    u.lang = "es-ES"; u.rate = 1; u.pitch = 1;
+    const voices = speechSynthesis.getVoices();
+    const v = voices.find(x => /es[-_]?(419|MX|CL|ES|US)/i.test(x.lang)) || voices.find(x => /^es/i.test(x.lang));
+    if (v) u.voice = v;
+    u.onend = advance;
+    videoState._u = u;
+    speechSynthesis.speak(u);
+    // respaldo por si no hay motor de voz audible: avanza por tiempo estimado
+    const est = Math.max(3500, s.narration.split(/\s+/).length / 2.6 * 1000 + 800);
+    videoState.timer = setTimeout(() => { if (videoState && videoState.playing && (!speechSynthesis.speaking)) advance(); }, est);
+  } else {
+    const est = Math.max(3500, s.narration.split(/\s+/).length / 2.6 * 1000);
+    videoState.timer = setTimeout(advance, est);
+  }
+}
+function animateBullets(s) {
+  videoState.spokenIdx = -1;
+  const total = s.items.length;
+  const per = Math.max(1200, (s.narration.split(/\s+/).length / 2.6 * 1000) / (total + 1));
+  let k = 0;
+  const step = () => {
+    if (!videoState || videoState.slides[videoState.i] !== s || !videoState.playing) return;
+    videoState.spokenIdx = k;
+    const li = el("v-li-" + k); if (li) li.classList.add("spoken");
+    k++;
+    if (k < total) videoState._bulletT = setTimeout(step, per);
+  };
+  step();
+}
+function videoToggle() {
+  if (!videoState) return;
+  videoState.playing = !videoState.playing;
+  if (videoState.playing) { renderSlide(); speakSlide(); }
+  else { try { speechSynthesis && speechSynthesis.cancel(); } catch (e) {} clearTimeout(videoState.timer); clearTimeout(videoState._bulletT); el("v-play").textContent = "▶"; }
+}
+function videoNext(auto) {
+  if (!videoState) return;
+  clearTimeout(videoState.timer); clearTimeout(videoState._bulletT);
+  if (videoState.i < videoState.slides.length - 1) {
+    videoState.i++; videoState.spokenIdx = -1; renderSlide();
+    if (videoState.playing) speakSlide();
+  } else {
+    videoState.playing = false; renderSlide();
+    if (auto) toast("Video finalizado 🎬");
+  }
+}
+function videoSeek(dir) {
+  if (!videoState) return;
+  clearTimeout(videoState.timer); clearTimeout(videoState._bulletT);
+  try { speechSynthesis && speechSynthesis.cancel(); } catch (e) {}
+  videoState.i = Math.max(0, Math.min(videoState.slides.length - 1, videoState.i + dir));
+  videoState.spokenIdx = -1; renderSlide();
+  if (videoState.playing) speakSlide();
+}
+function stopVideo() {
+  if (!videoState) return;
+  clearTimeout(videoState.timer); clearTimeout(videoState._bulletT);
+  try { speechSynthesis && speechSynthesis.cancel(); } catch (e) {}
+  videoState = null;
 }
 function editLesson(cid, lid) {
   const l = lid ? DB.lessons.find(x => x.id === lid) : { title: "", mins: 20, body: "" };

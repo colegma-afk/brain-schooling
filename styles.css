@@ -302,6 +302,53 @@ body.dark .cal-ev.due { background: #3d3320; color: #f0c078; }
 .progress { height: 9px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 .progress .fill { height: 100%; background: var(--accent); border-radius: 6px; }
 
+/* ===== Video-lección ===== */
+.modal-box.video { max-width: 780px; padding: 0; overflow: hidden; }
+.video-stage {
+  position: relative; aspect-ratio: 16/9; width: 100%;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 56px 40px 26px; color: #fff; overflow-y: auto;
+  background: linear-gradient(135deg, #4438a8 0%, #5b4fc4 55%, #14b8a6 130%);
+}
+.video-stage .vtag {
+  position: absolute; top: 16px; left: 20px; font-size: .72rem; font-weight: 700;
+  letter-spacing: .5px; text-transform: uppercase; opacity: .85;
+  background: rgba(255,255,255,.15); padding: 4px 11px; border-radius: 20px;
+}
+.video-stage .vnum { position: absolute; top: 16px; right: 20px; font-size: .78rem; opacity: .8; }
+.vslide-ico { font-size: 3rem; margin-bottom: 8px; }
+.vslide-title { font-size: 1.9rem; font-weight: 800; line-height: 1.15; letter-spacing: -.5px; margin-bottom: 8px; }
+.vslide-sub { font-size: 1.05rem; opacity: .9; font-weight: 600; }
+.vslide-text { font-size: 1.25rem; line-height: 1.5; font-weight: 500; max-width: 92%; }
+.vslide-text code { background: rgba(255,255,255,.18); padding: 1px 7px; border-radius: 5px; font-size: .95em; }
+.vslide-list { list-style: none; padding: 0; }
+.vslide-list li {
+  font-size: 1.12rem; line-height: 1.4; margin-bottom: 12px; padding-left: 30px; position: relative;
+  opacity: .35; transition: opacity .3s, transform .3s; transform: translateX(-4px);
+}
+.vslide-list li::before { content: "▹"; position: absolute; left: 4px; color: #a7f3e6; font-weight: 800; }
+.vslide-list li.spoken { opacity: 1; transform: translateX(0); }
+.vslide-list li.spoken::before { content: "▸"; }
+.video-caption {
+  background: var(--surface); color: var(--text); padding: 13px 20px;
+  font-size: .9rem; line-height: 1.45; min-height: 58px; border-bottom: 1px solid var(--border);
+}
+.video-caption .lbl { font-size: .68rem; text-transform: uppercase; letter-spacing: .6px; color: var(--text-soft); font-weight: 700; }
+.video-bar { height: 4px; background: var(--border); }
+.video-bar .vfill { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.video-controls {
+  display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: var(--surface);
+}
+.vbtn {
+  width: 42px; height: 42px; border-radius: 50%; border: 1.5px solid var(--border);
+  background: var(--bg); font-size: 1.05rem; color: var(--text); display: flex; align-items: center; justify-content: center;
+}
+.vbtn:hover { border-color: var(--brand); color: var(--brand); }
+.vbtn.play { width: 52px; height: 52px; background: var(--brand); color: #fff; border: none; font-size: 1.3rem; }
+.vbtn.play:hover { filter: brightness(1.08); color: #fff; }
+.video-controls .vmeta { margin-left: auto; font-size: .82rem; color: var(--text-soft); }
+.video-controls .vclose { margin-left: 6px; }
+
 /* ===== Responsive ===== */
 @media (max-width: 860px) {
   .shell { flex-direction: column; }
