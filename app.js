@@ -129,6 +129,10 @@ function navFor(role) {
   if (role === "docente") {
     base.push({ id: "gradebook", ic: "📊", label: "Calificaciones" });
     base.push({ id: "attendance", ic: "✅", label: "Asistencia" });
+    base.push({ id: "inclusion", ic: "🧩", label: "Adecuaciones" });
+  }
+  if (role === "estudiante") {
+    base.push({ id: "inclusion", ic: "🧩", label: "Apoyos DUA" });
   }
   if (role === "admin") {
     base.push({ id: "people", ic: "👥", label: "Usuarios" });
@@ -140,7 +144,7 @@ const TITLES = {
   dashboard: "Inicio", courses: "Cursos", assignments: "Tareas", calendar: "Calendario",
   messages: "Mensajes", grades: "Mis notas", prelabor: "Módulo Pre-Laboral",
   gradebook: "Calificaciones", attendance: "Asistencia", people: "Usuarios", reports: "Reportes",
-  course: "Curso", university: "Orientación Universitaria",
+  course: "Curso", university: "Orientación Universitaria", inclusion: "Adecuaciones Curriculares",
 };
 function renderApp() {
   const u = me();
@@ -192,6 +196,7 @@ function renderView() {
     case "grades": return viewGrades(c);
     case "prelabor": return viewPrelabor(c);
     case "university": return viewUniversity(c);
+    case "inclusion": return viewInclusion(c);
     case "gradebook": return viewGradebook(c);
     case "attendance": return viewAttendance(c);
     case "people": return viewPeople(c);
@@ -1130,6 +1135,171 @@ function uniBecas() {
     </div>`).join("")}
     </div>
     <p style="font-size:.8rem;color:var(--text-soft);margin-top:14px">ℹ️ Montos y requisitos referenciales (pueden variar cada año). No se puede tener Gratuidad y otra beca de arancel a la vez. Verificá siempre en <b>beneficiosestudiantiles.cl</b>.</p>`;
+}
+
+/* ============================================================
+   ADECUACIONES CURRICULARES (DUA / inclusión neurodivergente)
+============================================================ */
+const ADAPT_PROFILES = {
+  dua: { name: "DUA general", ic: "🌐", color: "#5b4fc4", style: "",
+    desc: "Diseño Universal para el Aprendizaje: múltiples formas de representar, expresar y comprometerse.",
+    estrategias: ["Presentar la información en varios formatos (texto, imagen, audio).", "Ofrecer opciones para demostrar lo aprendido.", "Activar conocimientos previos y dar ejemplos cercanos.", "Fraccionar la tarea en pasos claros."],
+    objetivos: ["Mantener el objetivo de aprendizaje del nivel.", "Reforzar los conceptos esenciales de la lección."],
+    evaluacion: ["Permitir distintos medios de respuesta (oral, escrito, gráfico).", "Usar rúbricas claras conocidas de antemano."],
+    apoyos: ["Organizadores gráficos", "Lectura en voz alta", "Tiempo flexible"] },
+  tdah: { name: "TDAH · Déficit atencional", ic: "⚡", color: "#e8a13c", style: "adapt-focus",
+    desc: "Dificultades de atención sostenida, impulsividad e hiperactividad.",
+    estrategias: ["Segmentar el contenido en bloques cortos con una idea por vez.", "Resaltar las palabras e ideas clave.", "Dar instrucciones breves y concretas, de a una.", "Alternar actividad y pausas (técnica de foco).", "Reforzar positivamente los logros."],
+    objetivos: ["Priorizar 2-3 ideas centrales por clase.", "Reducir la carga de contenido simultáneo."],
+    evaluacion: ["Evaluaciones más breves o por partes.", "Recordar consignas y dar tiempo extra.", "Evitar penalizar la ortografía en pruebas de contenido."],
+    apoyos: ["Lista de pasos con checkboxes", "Temporizador de foco", "Ubicación libre de distractores"] },
+  tea: { name: "TEA · Espectro autista", ic: "🧠", color: "#14b8a6", style: "adapt-structured",
+    desc: "Diferencias en comunicación social y necesidad de estructura y anticipación.",
+    estrategias: ["Anticipar la secuencia de la clase con una agenda visual.", "Usar lenguaje literal y directo, evitando dobles sentidos e ironías.", "Apoyar con imágenes o pictogramas.", "Mantener rutinas y avisar los cambios con anticipación."],
+    objetivos: ["Conservar el objetivo, explicitando cada paso.", "Definir con claridad qué se espera lograr."],
+    evaluacion: ["Instrucciones explícitas y ejemplos del formato esperado.", "Entornos predecibles y sin sorpresas.", "Aceptar formas alternativas de expresión."],
+    apoyos: ["Agenda visual de la clase", "Pictogramas", "Anticipación de cambios"] },
+  dislexia: { name: "Dislexia", ic: "📖", color: "#3b82f6", style: "adapt-dyslexia",
+    desc: "Dificultad específica en la lectura y decodificación de palabras.",
+    estrategias: ["Usar tipografía y espaciado accesibles (letras y líneas separadas).", "Ofrecer siempre la opción de escuchar el texto (lectura en voz alta).", "Evitar textos justificados y bloques muy largos.", "Fondo suave y alto contraste."],
+    objetivos: ["Mantener el objetivo; adecuar el acceso a la lectura.", "Valorar la comprensión por sobre la fluidez lectora."],
+    evaluacion: ["Leer las preguntas en voz alta o dar audio.", "No descontar por errores ortográficos.", "Permitir respuestas orales."],
+    apoyos: ["Texto con espaciado amplio", "Audio del contenido", "Más tiempo de lectura"] },
+  di: { name: "Discapacidad intelectual", ic: "💡", color: "#2fae72", style: "adapt-easy",
+    desc: "Requiere lenguaje sencillo (lectura fácil) y aprendizajes funcionales.",
+    estrategias: ["Usar frases cortas y vocabulario simple (lectura fácil).", "Presentar una idea concreta por vez con ejemplos cotidianos.", "Repetir y reforzar con apoyos visuales.", "Relacionar el contenido con la vida diaria."],
+    objetivos: ["Priorizar los aprendizajes esenciales y funcionales.", "Adecuar el objetivo si es necesario (PACI)."],
+    evaluacion: ["Evaluar los contenidos priorizados con apoyos.", "Usar preguntas concretas y material visual.", "Valorar el progreso individual."],
+    apoyos: ["Lectura fácil", "Glosario ilustrado", "Apoyo de un/a docente PIE"] },
+  discalculia: { name: "Discalculia", ic: "🔢", color: "#e05260", style: "adapt-easy",
+    desc: "Dificultad específica con los números y el razonamiento matemático.",
+    estrategias: ["Descomponer los procedimientos en pasos numerados.", "Usar material concreto y representaciones visuales.", "Dar ejemplos resueltos antes de ejercitar.", "Permitir calculadora para no bloquear el razonamiento."],
+    objetivos: ["Mantener el objetivo, reforzando el procedimiento paso a paso.", "Priorizar la comprensión sobre el cálculo mental."],
+    evaluacion: ["Aceptar el uso de tablas y calculadora.", "Valorar el procedimiento, no solo el resultado.", "Dar más tiempo."],
+    apoyos: ["Pasos numerados", "Material concreto/visual", "Calculadora"] },
+  altas: { name: "Altas capacidades / talento", ic: "🚀", color: "#8b5cf6", style: "",
+    desc: "Aprendizaje rápido que requiere profundización y desafío.",
+    estrategias: ["Proponer preguntas de extensión y profundización.", "Ofrecer proyectos de investigación autónomos.", "Conectar el tema con problemas reales y complejos.", "Evitar la repetición innecesaria."],
+    objetivos: ["Ampliar y enriquecer el objetivo del nivel.", "Agregar metas de mayor complejidad."],
+    evaluacion: ["Valorar la creatividad y el pensamiento crítico.", "Proponer productos originales.", "Permitir avanzar a su ritmo."],
+    apoyos: ["Retos de extensión", "Proyectos de investigación", "Mentoría"] },
+};
+let incState = { courseId: null, lessonId: null, profile: "dua", generated: false };
+let incLastPrint = "";
+
+function viewInclusion(c) {
+  const courses = DB.courses;
+  if (!incState.courseId || !courses.find(x => x.id === incState.courseId)) incState.courseId = (myCourses()[0] || courses[0]).id;
+  const lessons = DB.lessons.filter(l => l.course === incState.courseId);
+  if (!incState.lessonId || !lessons.find(l => l.id === incState.lessonId)) incState.lessonId = lessons[0] && lessons[0].id;
+  const lesson = DB.lessons.find(l => l.id === incState.lessonId);
+
+  const profChips = Object.entries(ADAPT_PROFILES).map(([k, p]) =>
+    `<button class="prof-chip ${incState.profile === k ? "active" : ""}" style="${incState.profile === k ? `background:${p.color};border-color:${p.color};color:#fff` : ""}" onclick="incState.profile='${k}';incState.generated=false;renderView()">${p.ic} ${p.name}</button>`).join("");
+
+  const result = incState.generated && lesson ? buildAdaptation(lesson, incState.profile) : `
+    <div class="empty"><span class="e">🧩</span>Elegí una lección y un perfil, y presioná <b>Generar adecuación</b>.<br>
+    <span style="font-size:.85rem">La herramienta adapta automáticamente el contenido y crea una ficha de apoyo.</span></div>`;
+
+  c.innerHTML = `
+    <div style="margin-bottom:16px"><h2 style="font-size:1.3rem">🧩 Automatizador de Adecuaciones Curriculares</h2>
+      <p style="color:var(--text-soft)">Adapta cualquier lección para estudiantes neurodivergentes (enfoque DUA / PIE).</p></div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="grid grid-2" style="gap:14px">
+        <div class="field" style="margin:0"><label>Asignatura</label>
+          <select onchange="incState.courseId=this.value;incState.lessonId=null;incState.generated=false;renderView()">
+            ${courses.map(cc => `<option value="${cc.id}" ${cc.id === incState.courseId ? "selected" : ""}>${esc(cc.name)}</option>`).join("")}
+          </select></div>
+        <div class="field" style="margin:0"><label>Lección a adaptar</label>
+          <select onchange="incState.lessonId=this.value;incState.generated=false;renderView()">
+            ${lessons.length ? lessons.map(l => `<option value="${l.id}" ${l.id === incState.lessonId ? "selected" : ""}>${(l.nivel || "1M").replace("M", "° medio")} · ${esc(l.title)}</option>`).join("") : `<option>Sin lecciones</option>`}
+          </select></div>
+      </div>
+      <label style="display:block;font-size:.85rem;font-weight:600;margin:14px 0 7px;color:var(--text-soft)">Perfil / Necesidad educativa</label>
+      <div class="prof-grid">${profChips}</div>
+      <div style="background:var(--bg);border-radius:9px;padding:11px 14px;margin-top:12px;font-size:.86rem;color:var(--text-soft)">
+        ${ADAPT_PROFILES[incState.profile].ic} <b>${ADAPT_PROFILES[incState.profile].name}:</b> ${ADAPT_PROFILES[incState.profile].desc}
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px" onclick="incState.generated=true;renderView()">✨ Generar adecuación</button>
+    </div>
+    ${result}`;
+}
+
+function buildAdaptation(lesson, profKey) {
+  const p = ADAPT_PROFILES[profKey];
+  const cc = course(lesson.course);
+  const tmp = document.createElement("div"); tmp.innerHTML = lesson.body;
+  const ideas = [...tmp.querySelectorAll("li")].map(li => li.textContent.trim()).filter(Boolean);
+  const paras = [...tmp.querySelectorAll("p")].map(pp => pp.textContent.trim()).filter(Boolean);
+  const vocab = [...tmp.querySelectorAll("b, code")].map(e => e.textContent.trim())
+    .filter(v => v.length > 2).filter((v, i, s) => s.indexOf(v) === i).slice(0, 8);
+  // oraciones cortas
+  const sentences = paras.join(" ").split(/(?<=[.:])\s+/).map(s => s.trim()).filter(s => s.length > 3);
+
+  const stepList = ideas.length ? ideas : sentences;
+  const stepsHtml = stepList.map((s, i) => `<li><span class="adapt-step-n">${i + 1}</span><span>${esc(s)}</span></li>`).join("");
+  const vocabHtml = vocab.length ? `<div class="adapt-sec"><h4>📚 Palabras clave</h4><div class="adapt-vocab">${vocab.map(v => `<span>${esc(v)}</span>`).join("")}</div></div>` : "";
+
+  const readText = `${lesson.title}. Ideas principales. ${stepList.join(". ")}.`;
+
+  const adapted = `<div class="adapt-box ${p.style}">
+    <div class="adapt-head"><span class="adapt-badge" style="background:${p.color}">${p.ic} Adaptado · ${esc(p.name)}</span>
+      <span style="font-size:.78rem;color:var(--text-soft)">${esc(cc.name)} · ${(lesson.nivel || "1M").replace("M", "° medio")}</span></div>
+    <h3 class="adapt-title">${esc(lesson.title)}</h3>
+    <div class="adapt-read">
+      <div class="adapt-sec"><h4>🎯 ¿Qué vamos a aprender?</h4><p>${esc(sentences[0] || lesson.title)}</p></div>
+      <div class="adapt-sec"><h4>🔑 Ideas clave, paso a paso</h4><ol class="adapt-steps">${stepsHtml}</ol></div>
+      ${sentences.length > 1 ? `<div class="adapt-sec"><h4>📖 Explicación sencilla</h4>${sentences.map(s => `<p>${esc(s)}</p>`).join("")}</div>` : ""}
+      ${vocabHtml}
+    </div>
+  </div>`;
+
+  const ficha = `<div class="card" style="margin-top:16px">
+    <h3>📋 Ficha de adecuación curricular <span style="font-size:.72rem;font-weight:600;color:var(--text-soft)">(para el/la docente · DUA/PIE)</span></h3>
+    <div class="ficha-grid">
+      ${fichaBlock("🛠️ Estrategias de adecuación", p.estrategias)}
+      ${fichaBlock("🎯 Objetivos de aprendizaje", p.objetivos)}
+      ${fichaBlock("📝 Evaluación adaptada", p.evaluacion)}
+      ${fichaBlock("🤝 Apoyos sugeridos", p.apoyos)}
+    </div>
+    <p style="font-size:.78rem;color:var(--text-soft);margin-top:12px">ℹ️ Sugerencia automática de referencia. Las adecuaciones de acceso no modifican el objetivo; las adecuaciones de objetivos (PACI) deben ser definidas por el equipo PIE y la familia.</p>
+  </div>`;
+
+  incLastPrint = `<h1>${esc(lesson.title)} — Adaptación (${esc(p.name)})</h1>` + adapted + ficha;
+
+  return `<div class="adapt-actions">
+      <button class="btn btn-accent btn-sm" onclick="readAdapt()">🔊 Leer en voz alta</button>
+      <button class="btn btn-ghost btn-sm" onclick="stopRead()">⏹️ Detener</button>
+      <button class="btn btn-ghost btn-sm" onclick="printAdapt()">🖨️ Imprimir / PDF</button>
+    </div>
+    ${adapted}${ficha}
+    <div id="adapt-readsrc" class="hidden">${esc(readText)}</div>`;
+}
+function fichaBlock(title, items) {
+  return `<div class="ficha-block"><h4>${title}</h4><ul>${items.map(i => `<li>${esc(i)}</li>`).join("")}</ul></div>`;
+}
+function readAdapt() {
+  const src = el("adapt-readsrc"); if (!src || !window.speechSynthesis) { toast("Tu navegador no tiene lectura de voz"); return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(src.textContent);
+  u.lang = "es-MX"; u.rate = 0.8;
+  const v = (speechSynthesis.getVoices() || []).find(x => /es[-_]?MX/i.test(x.lang)) || (speechSynthesis.getVoices() || []).find(x => /^es/i.test(x.lang));
+  if (v) u.voice = v;
+  speechSynthesis.speak(u); toast("Leyendo en voz alta… 🔊");
+}
+function stopRead() { try { speechSynthesis.cancel(); } catch (e) {} }
+function printAdapt() {
+  const w = window.open("", "_blank");
+  if (!w) { toast("Permití las ventanas emergentes"); return; }
+  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Adecuación curricular</title>
+    <style>body{font-family:"Segoe UI",system-ui,sans-serif;color:#23263b;max-width:760px;margin:0 auto;padding:36px;line-height:1.6}
+    h1{font-size:22px;border-bottom:3px solid #5b4fc4;padding-bottom:10px} h3{color:#5b4fc4;margin-top:22px} h4{margin:14px 0 4px}
+    .adapt-badge{display:inline-block;color:#fff;background:#5b4fc4;padding:3px 10px;border-radius:20px;font-size:12px}
+    ol,ul{margin:6px 0 6px 22px} .adapt-vocab span{display:inline-block;background:#eee;border-radius:6px;padding:2px 8px;margin:2px}
+    .ficha-block{margin-bottom:10px} @media print{.noprint{display:none}}</style></head><body>
+    <div class="noprint" style="text-align:center;margin-bottom:16px"><button onclick="window.print()" style="background:#5b4fc4;color:#fff;border:none;padding:9px 20px;border-radius:8px;font-weight:700;cursor:pointer">🖨️ Guardar como PDF</button></div>
+    ${incLastPrint}</body></html>`);
+  w.document.close();
 }
 
 /* ============================================================

@@ -316,6 +316,61 @@ body.dark .cal-ev.due { background: #3d3320; color: #f0c078; }
 .nivel-chip b { opacity: .7; font-weight: 700; }
 .nivel-chip.active b { opacity: .9; }
 
+/* ===== Adecuaciones curriculares (DUA) ===== */
+.prof-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.prof-chip {
+  padding: 8px 13px; border: 1.5px solid var(--border); background: var(--surface);
+  color: var(--text); border-radius: 22px; font-size: .84rem; font-weight: 600;
+}
+.prof-chip:hover { border-color: var(--brand); }
+.adapt-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.adapt-box {
+  background: var(--surface); border: 1px solid var(--border); border-left: 5px solid var(--brand);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 24px;
+}
+.adapt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.adapt-badge { color: #fff; font-size: .74rem; font-weight: 700; padding: 4px 11px; border-radius: 20px; }
+.adapt-title { font-size: 1.35rem; margin: 4px 0 14px; }
+.adapt-sec { margin-bottom: 16px; }
+.adapt-sec h4 { font-size: .95rem; margin-bottom: 6px; }
+.adapt-sec p { margin-bottom: 7px; }
+.adapt-steps { list-style: none; padding: 0; }
+.adapt-steps li { display: flex; align-items: flex-start; gap: 11px; padding: 9px 0; border-bottom: 1px dashed var(--border); }
+.adapt-steps li:last-child { border-bottom: none; }
+.adapt-step-n {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--brand-light); color: var(--brand);
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .82rem;
+}
+body.dark .adapt-step-n { color: #c9c3ff; }
+.adapt-vocab { display: flex; flex-wrap: wrap; gap: 7px; }
+.adapt-vocab span { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 4px 11px; font-size: .86rem; font-weight: 600; }
+
+/* Dislexia: tipografía y espaciado accesibles */
+.adapt-dyslexia { border-left-color: #3b82f6; background: #fbf7ee; }
+body.dark .adapt-dyslexia { background: #2a2620; }
+.adapt-dyslexia .adapt-read { font-size: 1.12rem; line-height: 2.1; letter-spacing: .06em; word-spacing: .18em; max-width: 62ch; }
+.adapt-dyslexia .adapt-read p { text-align: left; }
+
+/* TDAH: bloques de foco */
+.adapt-focus { border-left-color: #e8a13c; }
+.adapt-focus .adapt-sec { background: var(--bg); border: 1px solid var(--border); border-radius: 11px; padding: 13px 16px; }
+.adapt-focus .adapt-steps li { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; margin-bottom: 8px; padding: 10px 12px; }
+
+/* TEA: estructura y agenda */
+.adapt-structured { border-left-color: #14b8a6; }
+.adapt-structured .adapt-sec { border-left: 3px solid var(--accent); padding-left: 13px; }
+.adapt-structured .adapt-steps li { align-items: center; }
+
+/* Lectura fácil (DI / discalculia) */
+.adapt-easy .adapt-read { font-size: 1.16rem; line-height: 1.9; max-width: 60ch; }
+.adapt-easy .adapt-read p { margin-bottom: 12px; }
+
+.ficha-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 8px; }
+.ficha-block { background: var(--bg); border: 1px solid var(--border); border-radius: 11px; padding: 13px 15px; }
+.ficha-block h4 { font-size: .9rem; margin-bottom: 7px; }
+.ficha-block ul { margin: 0 0 0 18px; font-size: .86rem; }
+.ficha-block li { margin-bottom: 5px; color: var(--text-soft); }
+
 /* ===== Temario ===== */
 .tem-summary {
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
