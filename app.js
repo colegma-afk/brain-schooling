@@ -1226,7 +1226,8 @@ function viewInclusion(c) {
     </div>
     ${result}
     <div class="card" style="margin-top:18px">
-      <h3>📁 ${me().role === "estudiante" ? "Mis adecuaciones guardadas" : "Fichas guardadas (todas)"}</h3>
+      <div class="section-head" style="margin:0 0 10px"><h3 style="margin:0">📁 ${me().role === "estudiante" ? "Mis adecuaciones guardadas" : "Fichas guardadas (todas)"}</h3>
+        ${me().role === "estudiante" ? `<button class="btn btn-ghost btn-sm" onclick="openStudentFicha('${session}')">Ver mi ficha PIE completa</button>` : ""}</div>
       ${me().role === "estudiante" ? savedAdaptationsCard(session, false) : savedAllCard()}
     </div>`;
 }
@@ -1325,13 +1326,19 @@ function saveAdaptationPrompt() {
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveAdaptation(el('ad-stud').value)">Guardar en ficha</button></div>`);
 }
+function notifyStudent(sid, subject, body) {
+  if (sid === session) return; // sin autonotificación
+  DB.messages.push({ id: uid("m"), from: session, to: sid, subject, body, date: new Date().toISOString().slice(0, 16), read: false });
+}
 function saveAdaptation(sid) {
   const lesson = DB.lessons.find(l => l.id === incState.lessonId);
+  const p = ADAPT_PROFILES[incState.profile];
   DB.adaptations.push({
     id: uid("ad"), student: sid, course: incState.courseId, lesson: incState.lessonId,
     title: lesson ? lesson.title : "Lección", profile: incState.profile,
     date: today(), by: session, content: incLastPrint, readText: incLastRead,
   });
+  notifyStudent(sid, "🧩 Nueva adecuación en tu ficha", `${user(session).name} adjuntó una adecuación de la lección “${lesson ? lesson.title : ""}” (perfil ${p.name}). La encontrás en tu sección Apoyos DUA.`);
   saveDB(); closeModal(); renderView();
   toast("Adecuación guardada en la ficha de " + user(sid).name.split(" ")[0] + " ✅");
 }
@@ -1380,12 +1387,131 @@ function savedAllCard() {
   }).join("");
   return list.length ? rows : "<div class='empty'>Aún no se han guardado adecuaciones. Generá una y guardala en la ficha de un estudiante.</div>";
 }
+/* ---------- Ficha PIE del estudiante (perfil NEE, apoyos, evaluación diferenciada) ---------- */
+function pieData(sid) {
+  if (!DB.pie) DB.pie = {};
+  if (!DB.pie[sid]) DB.pie[sid] = { nee: { tipo: "", perfil: "", diagnostico: "", profesional: "", fecha: "", notas: "" }, apoyos: [], evalDif: [] };
+  return DB.pie[sid];
+}
 function openStudentFicha(sid) {
   const s = user(sid);
-  openModal(`<h3>📁 Ficha de ${esc(s.name)}</h3>
-    <div style="color:var(--text-soft);font-size:.84rem;margin-bottom:14px">${s.grade || "Estudiante"} · Adecuaciones curriculares guardadas</div>
-    ${savedAdaptationsCard(sid, false)}
-    <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Cerrar</button></div>`);
+  const d = pieData(sid);
+  const isT = me().role !== "estudiante";
+  const nee = d.nee || {};
+  const tipoPill = nee.tipo ? `<span class="pill ${nee.tipo === "Permanente" ? "bad" : "warn"}">NEE ${nee.tipo}</span>` : `<span class="pill info">Sin perfil registrado</span>`;
+  const neeBody = nee.perfil || nee.diagnostico ? `
+    <div style="font-size:.88rem;line-height:1.6">
+      ${nee.perfil ? `<b>Perfil:</b> ${esc(nee.perfil)}<br>` : ""}
+      ${nee.diagnostico ? `<b>Diagnóstico:</b> ${esc(nee.diagnostico)}<br>` : ""}
+      ${nee.profesional ? `<b>Profesional PIE:</b> ${esc(nee.profesional)}<br>` : ""}
+      ${nee.fecha ? `<b>Fecha:</b> ${fmtDate(nee.fecha)}<br>` : ""}
+      ${nee.notas ? `<div style="margin-top:6px;background:var(--bg);border-radius:8px;padding:10px">${esc(nee.notas)}</div>` : ""}
+    </div>` : `<div style="color:var(--text-soft);font-size:.86rem">Aún no se registra un perfil de NEE.</div>`;
+
+  const apoyos = (d.apoyos || []).map(a => `<div class="list-item" style="padding:9px 0">
+      <span>📌</span><div class="grow"><div class="s" style="color:var(--text)">${esc(a.text)}</div>
+        <div class="s">${fmtDate(a.date)} · ${a.by ? esc(user(a.by).name.split(" ")[0]) : ""}</div></div>
+      ${isT ? `<button class="icon-btn" onclick="delApoyo('${sid}','${a.id}')">🗑️</button>` : ""}
+    </div>`).join("") || "<div class='empty'>Sin apoyos registrados.</div>";
+
+  const evals = (d.evalDif || []).map(e => `<tr>
+      <td><b>${esc(e.name)}</b><div class="s">${course(e.course) ? course(e.course).name : ""}</div></td>
+      <td style="font-size:.84rem;color:var(--text-soft)">${esc(e.adec)}</td>
+      <td>${e.grade != null ? `<span class="pill ${e.grade >= 4 ? "ok" : "bad"}">${e.grade}</span>` : "—"}</td>
+      <td style="font-size:.8rem">${fmtDate(e.date)}</td>
+      ${isT ? `<td><button class="icon-btn" onclick="delEvalDif('${sid}','${e.id}')">🗑️</button></td>` : ""}
+    </tr>`).join("") || `<tr><td colspan="5" class="empty">Sin evaluaciones diferenciadas.</td></tr>`;
+
+  openModal(`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <div class="avatar" style="background:${s.color};width:44px;height:44px">${initials(s.name)}</div>
+      <div><h3 style="margin:0">${esc(s.name)}</h3><div style="font-size:.82rem;color:var(--text-soft)">${s.grade || "Estudiante"} · Ficha PIE</div></div>
+    </div>
+
+    <div class="ficha-sec"><div class="ficha-sec-head">${tipoPill} <b>Perfil de NEE</b>
+      ${isT ? `<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="editPieProfile('${sid}')">✏️ Editar</button>` : ""}</div>
+      ${neeBody}</div>
+
+    <div class="ficha-sec"><div class="ficha-sec-head"><b>🧩 Adecuaciones curriculares</b></div>
+      ${savedAdaptationsCard(sid, false)}</div>
+
+    <div class="ficha-sec"><div class="ficha-sec-head"><b>📌 Bitácora de apoyos</b>
+      ${isT ? `<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="addApoyo('${sid}')">+ Apoyo</button>` : ""}</div>
+      ${apoyos}</div>
+
+    <div class="ficha-sec"><div class="ficha-sec-head"><b>📝 Evaluaciones diferenciadas</b>
+      ${isT ? `<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="addEvalDif('${sid}')">+ Evaluación</button>` : ""}</div>
+      <table class="tbl"><thead><tr><th>Evaluación</th><th>Adecuación</th><th>Nota</th><th>Fecha</th>${isT ? "<th></th>" : ""}</tr></thead><tbody>${evals}</tbody></table></div>
+
+    <div class="modal-actions">
+      ${isT ? `<button class="btn btn-ghost" onclick="printFicha('${sid}')">🖨️ Imprimir ficha</button>` : ""}
+      <button class="btn btn-primary" onclick="closeModal()">Cerrar</button></div>`);
+}
+function editPieProfile(sid) {
+  const n = pieData(sid).nee || {};
+  openModal(`<h3>✏️ Perfil de NEE</h3>
+    <div class="field"><label>Tipo de NEE</label><select id="pie-tipo">
+      <option value="" ${!n.tipo ? "selected" : ""}>Sin registrar</option>
+      <option ${n.tipo === "Permanente" ? "selected" : ""}>Permanente</option>
+      <option ${n.tipo === "Transitoria" ? "selected" : ""}>Transitoria</option></select></div>
+    <div class="field"><label>Perfil (ej: TDAH, TEA, Dislexia)</label><input id="pie-perfil" value="${esc(n.perfil || "")}"></div>
+    <div class="field"><label>Diagnóstico</label><input id="pie-diag" value="${esc(n.diagnostico || "")}"></div>
+    <div class="field"><label>Profesional PIE responsable</label><input id="pie-prof" value="${esc(n.profesional || "")}"></div>
+    <div class="field"><label>Fecha de evaluación</label><input id="pie-fecha" type="date" value="${n.fecha || ""}"></div>
+    <div class="field"><label>Notas / observaciones</label><textarea id="pie-notas">${esc(n.notas || "")}</textarea></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="openStudentFicha('${sid}')">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePieProfile('${sid}')">Guardar</button></div>`);
+}
+function savePieProfile(sid) {
+  pieData(sid).nee = { tipo: el("pie-tipo").value, perfil: el("pie-perfil").value.trim(), diagnostico: el("pie-diag").value.trim(), profesional: el("pie-prof").value.trim(), fecha: el("pie-fecha").value, notas: el("pie-notas").value.trim() };
+  saveDB(); toast("Perfil NEE guardado"); openStudentFicha(sid);
+}
+function addApoyo(sid) {
+  openModal(`<h3>+ Apoyo / ajuste</h3>
+    <div class="field"><label>Describí el apoyo brindado</label><textarea id="ap-text" placeholder="Ej: Material con letra ampliada; acompañamiento en la tarea..."></textarea></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="openStudentFicha('${sid}')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveApoyo('${sid}')">Agregar</button></div>`);
+}
+function saveApoyo(sid) {
+  const t = el("ap-text").value.trim(); if (!t) return toast("Escribí el apoyo");
+  pieData(sid).apoyos.push({ id: uid("ap"), text: t, date: today(), by: session });
+  notifyStudent(sid, "📌 Nuevo apoyo en tu ficha PIE", `${user(session).name} registró un apoyo: “${t}”.`);
+  saveDB(); openStudentFicha(sid); toast("Apoyo registrado");
+}
+function delApoyo(sid, id) { const d = pieData(sid); d.apoyos = d.apoyos.filter(a => a.id !== id); saveDB(); openStudentFicha(sid); }
+function addEvalDif(sid) {
+  const cs = DB.courses;
+  openModal(`<h3>+ Evaluación diferenciada</h3>
+    <div class="field"><label>Asignatura</label><select id="ed-course">${cs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></div>
+    <div class="field"><label>Nombre de la evaluación</label><input id="ed-name" placeholder="Ej: Prueba de fracciones"></div>
+    <div class="field"><label>Adecuación aplicada</label><input id="ed-adec" placeholder="Ej: Tiempo extra, lectura en voz alta..."></div>
+    <div style="display:flex;gap:10px">
+      <div class="field" style="width:110px"><label>Nota</label><input id="ed-grade" type="number" min="1" max="7" step="0.1" placeholder="1-7"></div>
+      <div class="field" style="flex:1"><label>Fecha</label><input id="ed-date" type="date" value="${today()}"></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="openStudentFicha('${sid}')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEvalDif('${sid}')">Agregar</button></div>`);
+}
+function saveEvalDif(sid) {
+  const name = el("ed-name").value.trim(); if (!name) return toast("Poné el nombre");
+  const g = el("ed-grade").value;
+  pieData(sid).evalDif.push({ id: uid("ev"), course: el("ed-course").value, name, adec: el("ed-adec").value.trim(), grade: g === "" ? null : +g, date: el("ed-date").value });
+  notifyStudent(sid, "📝 Evaluación diferenciada registrada", `Se registró la evaluación diferenciada “${name}” en tu ficha PIE.`);
+  saveDB(); openStudentFicha(sid); toast("Evaluación diferenciada agregada");
+}
+function delEvalDif(sid, id) { const d = pieData(sid); d.evalDif = d.evalDif.filter(e => e.id !== id); saveDB(); openStudentFicha(sid); }
+function printFicha(sid) {
+  const s = user(sid), d = pieData(sid), n = d.nee || {};
+  const html = `<h1>Ficha PIE — ${esc(s.name)}</h1><p>${s.grade || ""} · ${n.tipo ? "NEE " + n.tipo : "Sin perfil"}</p>
+    <h3>Perfil de NEE</h3><p>${n.perfil ? "<b>Perfil:</b> " + esc(n.perfil) + "<br>" : ""}${n.diagnostico ? "<b>Diagnóstico:</b> " + esc(n.diagnostico) + "<br>" : ""}${n.profesional ? "<b>Profesional:</b> " + esc(n.profesional) + "<br>" : ""}${n.notas ? "<br>" + esc(n.notas) : ""}</p>
+    <h3>Adecuaciones</h3><ul>${(adaptationsFor(sid).map(a => "<li>" + esc(a.title) + " (" + (ADAPT_PROFILES[a.profile] ? ADAPT_PROFILES[a.profile].name : "") + ") — " + fmtDate(a.date) + "</li>").join("")) || "<li>—</li>"}</ul>
+    <h3>Bitácora de apoyos</h3><ul>${(d.apoyos.map(a => "<li>" + esc(a.text) + " — " + fmtDate(a.date) + "</li>").join("")) || "<li>—</li>"}</ul>
+    <h3>Evaluaciones diferenciadas</h3><ul>${(d.evalDif.map(e => "<li>" + esc(e.name) + " — " + esc(e.adec) + " — nota " + (e.grade != null ? e.grade : "—") + " (" + fmtDate(e.date) + ")</li>").join("")) || "<li>—</li>"}</ul>`;
+  const w = window.open("", "_blank"); if (!w) return toast("Permití las ventanas emergentes");
+  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Ficha PIE — ${esc(s.name)}</title>
+    <style>body{font-family:"Segoe UI",system-ui,sans-serif;color:#23263b;max-width:720px;margin:0 auto;padding:36px;line-height:1.6}h1{border-bottom:3px solid #5b4fc4;padding-bottom:10px}h3{color:#5b4fc4;margin-top:20px}@media print{.noprint{display:none}}</style></head>
+    <body><div class="noprint" style="text-align:center;margin-bottom:16px"><button onclick="window.print()" style="background:#5b4fc4;color:#fff;border:none;padding:9px 20px;border-radius:8px;font-weight:700;cursor:pointer">🖨️ Guardar como PDF</button></div>${html}</body></html>`);
+  w.document.close();
 }
 
 /* ============================================================

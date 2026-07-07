@@ -1,5 +1,5 @@
 /* ===== Brain Schooling — datos semilla y capa de persistencia ===== */
-const DB_KEY = "brain_schooling_db_v5";
+const DB_KEY = "brain_schooling_db_v6";
 
 function seedDB() {
   return {
@@ -363,6 +363,13 @@ function seedDB() {
       { id: "m2", from: "u_admin", to: "u_est1", subject: "Bienvenido a Brain Schooling", body: "¡Hola! Te damos la bienvenida a la plataforma. Cualquier duda escribinos.", date: "2026-07-01T09:00", read: true },
     ],
     adaptations: [],
+    pie: {
+      u_est1: {
+        nee: { tipo: "Transitoria", perfil: "TDAH", diagnostico: "Déficit atencional con hiperactividad", profesional: "Psicopedagoga M. Rojas (PIE)", fecha: "2026-03-15", notas: "Requiere apoyo en organización, tiempos de foco y refuerzo positivo." },
+        apoyos: [{ id: "ap1", text: "Ubicación preferencial en la sala, lejos de distractores.", date: "2026-03-20", by: "u_prof1" }],
+        evalDif: [{ id: "ev1", course: "c_mat", name: "Prueba de funciones lineales", adec: "Tiempo adicional y evaluación por partes", grade: 6.5, date: "2026-06-10" }],
+      },
+    },
     prelabor: {
       // por estudiante
       u_est1: {
@@ -391,6 +398,7 @@ function loadDB() {
   } catch (e) { DB = seedDB(); }
   if (!DB.users) DB = seedDB();
   if (!DB.adaptations) DB.adaptations = [];
+  if (!DB.pie) DB.pie = {};
   saveDB();
 }
 function saveDB() { localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
