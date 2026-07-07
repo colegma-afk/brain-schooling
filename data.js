@@ -407,5 +407,5 @@ function loadDB() {
   if (!DB.pie) DB.pie = {};
   saveDB();
 }
-function saveDB() { localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
+function saveDB() { localStorage.setItem(DB_KEY, JSON.stringify(DB)); if (typeof scheduleCloudSave === "function") scheduleCloudSave(); }
 function resetDB() { DB = seedDB(); saveDB(); }

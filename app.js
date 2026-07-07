@@ -184,6 +184,7 @@ function renderApp() {
         <header class="topbar">
           <h1>${TITLES[view] || "Brain Schooling"}</h1>
           <div class="top-actions">
+            <button class="icon-btn" title="${syncEnabled ? "Nube conectada" : "Modo local"}" onclick="openSyncSettings()">${syncEnabled ? "☁️" : "💾"}</button>
             <button class="icon-btn" title="Tema" onclick="toggleTheme()">🌓</button>
           </div>
         </header>
@@ -1775,9 +1776,75 @@ function toggleTheme() {
   document.body.classList.toggle("dark");
   localStorage.setItem("brain_theme", document.body.classList.contains("dark") ? "dark" : "light");
 }
-function boot() {
+
+/* ---------- configuración de sincronización en la nube ---------- */
+function openSyncSettings() {
+  const cfg = typeof getSyncCfg === "function" ? getSyncCfg() : null;
+  const enabled = typeof syncEnabled !== "undefined" && syncEnabled;
+  const sql = `create table if not exists brain_state (
+  id text primary key,
+  data jsonb,
+  updated_at timestamptz default now()
+);
+alter table brain_state enable row level security;
+create policy "brain_rw" on brain_state
+  for all using (true) with check (true);`;
+  const fromConfig = cfg && cfg.src === "config";
+  openModal(`<h3>☁️ Sincronización en la nube</h3>
+    <div style="background:${enabled ? "var(--accent-light)" : "var(--bg)"};border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:.9rem">
+      <b>Estado:</b> ${enabled ? "🟢 Conectado — los datos se comparten entre usuarios." : "⚪ Modo local — los datos viven solo en este navegador."}
+      ${fromConfig ? "<br><span style='font-size:.8rem;color:var(--text-soft)'>Configurado desde <code>config.js</code> (para todos).</span>" : ""}
+    </div>
+    <div class="field"><label>Supabase URL</label><input id="sy-url" placeholder="https://xxxx.supabase.co" value="${esc(cfg ? cfg.url : "")}" ${fromConfig ? "disabled" : ""}></div>
+    <div class="field"><label>Clave anon public</label><input id="sy-key" placeholder="eyJhbGciOi..." value="${esc(cfg ? cfg.key : "")}" ${fromConfig ? "disabled" : ""}></div>
+    <div id="sy-msg" style="font-size:.85rem;min-height:18px;margin-bottom:8px"></div>
+    ${fromConfig ? "" : `<div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="doTestSync()">🔌 Probar conexión</button>
+      <button class="btn btn-primary btn-sm" onclick="doSaveSync()">Guardar y conectar</button>
+      ${cfg ? `<button class="btn btn-ghost btn-sm" onclick="doClearSync()">Desconectar</button>` : ""}
+    </div>`}
+    <details style="margin-top:16px"><summary style="cursor:pointer;font-weight:600;font-size:.88rem">📋 Cómo configurarlo (paso a paso)</summary>
+      <ol style="font-size:.85rem;margin:10px 0 0 18px;line-height:1.6">
+        <li>Creá un proyecto gratis en <a href="https://supabase.com" target="_blank" rel="noopener">supabase.com</a>.</li>
+        <li>En <b>SQL Editor</b> pegá y ejecutá este script:</li>
+      </ol>
+      <pre style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.76rem;overflow-x:auto;margin-top:8px">${esc(sql)}</pre>
+      <ol start="3" style="font-size:.85rem;margin:8px 0 0 18px;line-height:1.6">
+        <li>Activá <b>Realtime</b> para la tabla <code>brain_state</code> (Database → Replication).</li>
+        <li>Copiá la <b>URL</b> y la clave <b>anon public</b> (Project Settings → API) y pegalas arriba, o en <code>config.js</code> para que aplique a todos.</li>
+      </ol>
+      <p style="font-size:.78rem;color:var(--text-soft);margin-top:8px">ℹ️ La política RLS de ejemplo permite lectura/escritura pública (nivel demo). Para producción, restringila con Supabase Auth.</p>
+    </details>
+    <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Cerrar</button></div>`);
+}
+async function doTestSync() {
+  const url = el("sy-url").value, key = el("sy-key").value;
+  const m = el("sy-msg"); m.style.color = "var(--text-soft)"; m.textContent = "Probando…";
+  const r = await testSyncConnection(url, key);
+  m.style.color = r.ok ? "var(--ok)" : "var(--danger)"; m.textContent = r.msg;
+}
+async function doSaveSync() {
+  const url = el("sy-url").value.trim(), key = el("sy-key").value.trim();
+  if (!url || !key) return toast("Completá URL y clave");
+  const r = await testSyncConnection(url, key);
+  if (!r.ok) { const m = el("sy-msg"); m.style.color = "var(--danger)"; m.textContent = "No se pudo conectar: " + r.msg; return; }
+  setLocalSyncCfg(url, key); toast("Conectando a la nube…"); setTimeout(() => location.reload(), 600);
+}
+function doClearSync() { setLocalSyncCfg(null, null); toast("Sincronización desconectada"); setTimeout(() => location.reload(), 500); }
+async function boot() {
   loadDB();
   if (localStorage.getItem("brain_theme") === "dark") document.body.classList.add("dark");
+  // sincronización en la nube (si está configurada); si no, sigue en modo local
+  if (typeof initSupabase === "function") {
+    try {
+      if (await initSupabase()) {
+        const remote = await cloudLoad();
+        if (remote && remote.users) { DB = remote; localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
+        else { await cloudSave(DB); }
+        subscribeCloud();
+      }
+    } catch (e) { console.warn("[sync] boot", e && e.message); }
+  }
   const s = localStorage.getItem(SESSION_KEY);
   if (s && user(s)) { session = s; if (user(s).role === "pie") view = "piepanel"; renderApp(); } else renderLogin();
 }

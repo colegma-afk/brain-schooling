@@ -29,6 +29,26 @@ python3 -m http.server 8080
 
 y entrar a `http://localhost:8080`.
 
+## Sincronización en la nube (opcional)
+
+Por defecto los datos viven en el navegador (`localStorage`). Para **compartirlos entre usuarios y dispositivos** se puede conectar un proyecto gratuito de [Supabase](https://supabase.com):
+
+1. Creá un proyecto en Supabase.
+2. En **SQL Editor** ejecutá:
+   ```sql
+   create table if not exists brain_state (
+     id text primary key,
+     data jsonb,
+     updated_at timestamptz default now()
+   );
+   alter table brain_state enable row level security;
+   create policy "brain_rw" on brain_state for all using (true) with check (true);
+   ```
+3. Activá **Realtime** para la tabla `brain_state`.
+4. Pegá la **URL** y la clave **anon public** en `config.js` (aplica a todos) o desde la app en el botón **☁️/💾 → Sincronización** (solo este navegador).
+
+La app guarda todo el estado como un documento JSON (`brain_state`, fila `id='main'`) con última-escritura-gana y se actualiza en tiempo real. La política RLS de ejemplo es de nivel demo; para producción conviene restringirla con Supabase Auth.
+
 ## Deploy
 
 Se publica automáticamente en GitHub Pages al hacer push a `main` (ver `.github/workflows/deploy.yml`).
