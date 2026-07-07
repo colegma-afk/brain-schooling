@@ -1,10 +1,11 @@
 /* ===== Brain Schooling — datos semilla y capa de persistencia ===== */
-const DB_KEY = "brain_schooling_db_v6";
+const DB_KEY = "brain_schooling_db_v7";
 
 function seedDB() {
   return {
     users: [
       { id: "u_admin", name: "Dirección Brain", email: "admin@brain.edu", pass: "1234", role: "admin", color: "#5b4fc4" },
+      { id: "u_pie", name: "Coord. PIE Carla Núñez", email: "pie@brain.edu", pass: "1234", role: "pie", color: "#8b5cf6" },
       { id: "u_prof1", name: "Prof. Laura Méndez", email: "laura@brain.edu", pass: "1234", role: "docente", color: "#14b8a6", subjects: ["c_mat", "c_prog", "c_ing", "c_dig"] },
       { id: "u_prof2", name: "Prof. Diego Ríos", email: "diego@brain.edu", pass: "1234", role: "docente", color: "#e8a13c", subjects: ["c_len", "c_lab", "c_cs", "c_his"] },
       { id: "u_est1", name: "Martín Suárez", email: "martin@brain.edu", pass: "1234", role: "estudiante", color: "#e05260", grade: "4º A", enrolled: ["c_mat", "c_len", "c_prog", "c_lab", "c_cs", "c_his", "c_ing", "c_dig", "el_biocel", "el_calc", "el_lit", "el_global"] },
@@ -365,9 +366,14 @@ function seedDB() {
     adaptations: [],
     pie: {
       u_est1: {
-        nee: { tipo: "Transitoria", perfil: "TDAH", diagnostico: "Déficit atencional con hiperactividad", profesional: "Psicopedagoga M. Rojas (PIE)", fecha: "2026-03-15", notas: "Requiere apoyo en organización, tiempos de foco y refuerzo positivo." },
+        nee: { tipo: "Transitoria", perfil: "TDAH", diagnostico: "Déficit atencional con hiperactividad", profesional: "Psicopedagoga M. Rojas (PIE)", fecha: "2026-03-15", revision: "2026-06-30", notas: "Requiere apoyo en organización, tiempos de foco y refuerzo positivo." },
         apoyos: [{ id: "ap1", text: "Ubicación preferencial en la sala, lejos de distractores.", date: "2026-03-20", by: "u_prof1" }],
         evalDif: [{ id: "ev1", course: "c_mat", name: "Prueba de funciones lineales", adec: "Tiempo adicional y evaluación por partes", grade: 6.5, date: "2026-06-10" }],
+      },
+      u_est3: {
+        nee: { tipo: "Permanente", perfil: "TEA", diagnostico: "Trastorno del Espectro Autista nivel 1", profesional: "Educadora Diferencial J. Paredes (PIE)", fecha: "2026-03-10", revision: "2026-07-25", notas: "Necesita anticipación de cambios, apoyos visuales y lenguaje literal." },
+        apoyos: [{ id: "ap2", text: "Uso de agenda visual diaria y avisos de cambios de rutina.", date: "2026-03-18", by: "u_prof2" }],
+        evalDif: [{ id: "ev2", course: "c_len", name: "Control de lectura", adec: "Instrucciones explícitas y ejemplo del formato", grade: 6.0, date: "2026-06-05" }],
       },
     },
     prelabor: {

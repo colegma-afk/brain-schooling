@@ -58,9 +58,9 @@ a { color: var(--brand); }
 .login-title { text-align: center; font-size: 1.6rem; font-weight: 800; letter-spacing: -.5px; }
 .login-title span { color: var(--brand); }
 .login-sub { text-align: center; color: var(--text-soft); margin-bottom: 24px; font-size: .95rem; }
-.demo-row { display: flex; gap: 8px; margin-top: 18px; }
+.demo-row { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
 .demo-btn {
-  flex: 1; padding: 8px 4px; border: 1px dashed var(--brand); background: var(--brand-light);
+  flex: 1 1 40%; padding: 8px 4px; border: 1px dashed var(--brand); background: var(--brand-light);
   color: var(--brand-dark); border-radius: 10px; font-size: .8rem; font-weight: 600;
 }
 body.dark .demo-btn { color: #c9c3ff; }

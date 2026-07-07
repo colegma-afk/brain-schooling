@@ -90,6 +90,7 @@ function renderLogin() {
           <button class="demo-btn" onclick="quickLogin('admin@brain.edu')">👤 Admin</button>
           <button class="demo-btn" onclick="quickLogin('laura@brain.edu')">🍎 Docente</button>
           <button class="demo-btn" onclick="quickLogin('martin@brain.edu')">🎓 Estudiante</button>
+          <button class="demo-btn" onclick="quickLogin('pie@brain.edu')">🧩 Coord. PIE</button>
         </div>
       </div>
     </div>`;
@@ -101,12 +102,12 @@ function doLogin(e) {
   const u = DB.users.find(x => x.email.toLowerCase() === email && x.pass === pass);
   if (!u) { toast("Credenciales incorrectas"); return; }
   session = u.id; localStorage.setItem(SESSION_KEY, session);
-  nivelSel = null; view = "dashboard"; renderApp();
+  nivelSel = null; view = u.role === "pie" ? "piepanel" : "dashboard"; renderApp();
 }
 function quickLogin(email) {
   const u = DB.users.find(x => x.email === email);
   session = u.id; localStorage.setItem(SESSION_KEY, session);
-  nivelSel = null; view = "dashboard"; renderApp();
+  nivelSel = null; view = u.role === "pie" ? "piepanel" : "dashboard"; renderApp();
 }
 function logout() { session = null; localStorage.removeItem(SESSION_KEY); renderLogin(); }
 
@@ -114,6 +115,14 @@ function logout() { session = null; localStorage.removeItem(SESSION_KEY); render
    SHELL / NAVEGACIÓN
 ============================================================ */
 function navFor(role) {
+  if (role === "pie") {
+    return [
+      { id: "piepanel", ic: "🧩", label: "Panel PIE" },
+      { id: "inclusion", ic: "✨", label: "Adecuaciones" },
+      { id: "calendar", ic: "📅", label: "Calendario" },
+      { id: "messages", ic: "✉️", label: "Mensajes", badge: unreadCount() },
+    ];
+  }
   const base = [
     { id: "dashboard", ic: "🏠", label: "Inicio" },
     { id: "courses", ic: "📚", label: "Cursos" },
@@ -135,6 +144,7 @@ function navFor(role) {
     base.push({ id: "inclusion", ic: "🧩", label: "Apoyos DUA" });
   }
   if (role === "admin") {
+    base.push({ id: "piepanel", ic: "🧩", label: "Panel PIE" });
     base.push({ id: "people", ic: "👥", label: "Usuarios" });
     base.push({ id: "reports", ic: "📈", label: "Reportes" });
   }
@@ -145,6 +155,7 @@ const TITLES = {
   messages: "Mensajes", grades: "Mis notas", prelabor: "Módulo Pre-Laboral",
   gradebook: "Calificaciones", attendance: "Asistencia", people: "Usuarios", reports: "Reportes",
   course: "Curso", university: "Orientación Universitaria", inclusion: "Adecuaciones Curriculares",
+  piepanel: "Coordinación PIE",
 };
 function renderApp() {
   const u = me();
@@ -197,6 +208,7 @@ function renderView() {
     case "prelabor": return viewPrelabor(c);
     case "university": return viewUniversity(c);
     case "inclusion": return viewInclusion(c);
+    case "piepanel": return viewPiePanel(c);
     case "gradebook": return viewGradebook(c);
     case "attendance": return viewAttendance(c);
     case "people": return viewPeople(c);
@@ -1404,7 +1416,8 @@ function openStudentFicha(sid) {
       ${nee.perfil ? `<b>Perfil:</b> ${esc(nee.perfil)}<br>` : ""}
       ${nee.diagnostico ? `<b>Diagnóstico:</b> ${esc(nee.diagnostico)}<br>` : ""}
       ${nee.profesional ? `<b>Profesional PIE:</b> ${esc(nee.profesional)}<br>` : ""}
-      ${nee.fecha ? `<b>Fecha:</b> ${fmtDate(nee.fecha)}<br>` : ""}
+      ${nee.fecha ? `<b>Fecha de evaluación:</b> ${fmtDate(nee.fecha)}<br>` : ""}
+      ${nee.revision ? `<b>Próxima revisión PACI:</b> ${fmtDate(nee.revision)} ${reviewBadge(sid)}<br>` : ""}
       ${nee.notas ? `<div style="margin-top:6px;background:var(--bg);border-radius:8px;padding:10px">${esc(nee.notas)}</div>` : ""}
     </div>` : `<div style="color:var(--text-soft);font-size:.86rem">Aún no se registra un perfil de NEE.</div>`;
 
@@ -1457,13 +1470,16 @@ function editPieProfile(sid) {
     <div class="field"><label>Perfil (ej: TDAH, TEA, Dislexia)</label><input id="pie-perfil" value="${esc(n.perfil || "")}"></div>
     <div class="field"><label>Diagnóstico</label><input id="pie-diag" value="${esc(n.diagnostico || "")}"></div>
     <div class="field"><label>Profesional PIE responsable</label><input id="pie-prof" value="${esc(n.profesional || "")}"></div>
-    <div class="field"><label>Fecha de evaluación</label><input id="pie-fecha" type="date" value="${n.fecha || ""}"></div>
+    <div style="display:flex;gap:10px">
+      <div class="field" style="flex:1"><label>Fecha de evaluación</label><input id="pie-fecha" type="date" value="${n.fecha || ""}"></div>
+      <div class="field" style="flex:1"><label>Próxima revisión PACI</label><input id="pie-revision" type="date" value="${n.revision || ""}"></div>
+    </div>
     <div class="field"><label>Notas / observaciones</label><textarea id="pie-notas">${esc(n.notas || "")}</textarea></div>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="openStudentFicha('${sid}')">Cancelar</button>
       <button class="btn btn-primary" onclick="savePieProfile('${sid}')">Guardar</button></div>`);
 }
 function savePieProfile(sid) {
-  pieData(sid).nee = { tipo: el("pie-tipo").value, perfil: el("pie-perfil").value.trim(), diagnostico: el("pie-diag").value.trim(), profesional: el("pie-prof").value.trim(), fecha: el("pie-fecha").value, notas: el("pie-notas").value.trim() };
+  pieData(sid).nee = { tipo: el("pie-tipo").value, perfil: el("pie-perfil").value.trim(), diagnostico: el("pie-diag").value.trim(), profesional: el("pie-prof").value.trim(), fecha: el("pie-fecha").value, revision: el("pie-revision").value, notas: el("pie-notas").value.trim() };
   saveDB(); toast("Perfil NEE guardado"); openStudentFicha(sid);
 }
 function addApoyo(sid) {
@@ -1515,6 +1531,151 @@ function printFicha(sid) {
 }
 
 /* ============================================================
+   COORDINACIÓN PIE (panel institucional + recordatorios + informe)
+============================================================ */
+function neeStudents() {
+  return DB.users.filter(u => u.role === "estudiante").filter(s => {
+    const d = DB.pie && DB.pie[s.id];
+    return (d && ((d.nee && d.nee.tipo) || (d.apoyos && d.apoyos.length) || (d.evalDif && d.evalDif.length))) || adaptationsFor(s.id).length;
+  });
+}
+function reviewStatus(sid) {
+  const d = DB.pie && DB.pie[sid];
+  const rev = d && d.nee && d.nee.revision;
+  if (!rev) return { state: "none", days: null };
+  const days = daysTo(rev);
+  if (days < 0) return { state: "overdue", days };
+  if (days <= 30) return { state: "soon", days };
+  return { state: "ok", days };
+}
+function reviewBadge(sid) {
+  const r = reviewStatus(sid);
+  if (r.state === "overdue") return `<span class="pill bad">⚠️ Vencida hace ${Math.abs(r.days)}d</span>`;
+  if (r.state === "soon") return `<span class="pill warn">⏳ En ${r.days}d</span>`;
+  if (r.state === "ok") return `<span class="pill ok">✔️ Al día</span>`;
+  return `<span class="pill info">Sin fecha</span>`;
+}
+function viewPiePanel(c) {
+  const studs = neeStudents();
+  const perm = studs.filter(s => (DB.pie[s.id].nee || {}).tipo === "Permanente").length;
+  const trans = studs.filter(s => (DB.pie[s.id].nee || {}).tipo === "Transitoria").length;
+  const totalAdec = DB.adaptations.length;
+  const pend = studs.filter(s => ["overdue", "soon"].includes(reviewStatus(s.id).state));
+  const overdue = studs.filter(s => reviewStatus(s.id).state === "overdue");
+
+  // distribución por perfil
+  const dist = {};
+  studs.forEach(s => { const p = (DB.pie[s.id].nee || {}).perfil || "Sin especificar"; dist[p] = (dist[p] || 0) + 1; });
+  const distMax = Math.max(1, ...Object.values(dist));
+
+  const reminders = pend.length ? pend.sort((a, b) => (reviewStatus(a.id).days || 0) - (reviewStatus(b.id).days || 0)).map(s => `
+    <div class="list-item">
+      <div class="avatar" style="background:${s.color};width:34px;height:34px;font-size:.78rem">${initials(s.name)}</div>
+      <div class="grow"><div class="t">${esc(s.name)}</div><div class="s">Revisión PACI: ${fmtDate(DB.pie[s.id].nee.revision)}</div></div>
+      ${reviewBadge(s.id)}
+      <button class="btn btn-ghost btn-sm" onclick="openStudentFicha('${s.id}')">Ficha</button>
+      <button class="btn btn-accent btn-sm" onclick="remindReview('${s.id}')">🔔 Avisar</button>
+    </div>`).join("") : "<div class='empty'>✅ No hay revisiones de PACI pendientes.</div>";
+
+  const rows = studs.map(s => {
+    const d = DB.pie[s.id], n = d.nee || {};
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="background:${s.color};width:30px;height:30px;font-size:.72rem">${initials(s.name)}</div><div><b>${esc(s.name)}</b><div class="s">${s.grade || ""}</div></div></div></td>
+      <td>${n.tipo ? `<span class="pill ${n.tipo === "Permanente" ? "bad" : "warn"}">${n.tipo}</span>` : "—"}</td>
+      <td>${esc(n.perfil || "—")}</td>
+      <td style="text-align:center">${adaptationsFor(s.id).length}</td>
+      <td style="text-align:center">${(d.apoyos || []).length}</td>
+      <td style="text-align:center">${(d.evalDif || []).length}</td>
+      <td>${reviewBadge(s.id)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openStudentFicha('${s.id}')">📁 Ficha</button></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="8" class="empty">Aún no hay estudiantes en el PIE.</td></tr>`;
+
+  c.innerHTML = `
+    <div class="section-head"><div><h2 style="font-size:1.3rem">🧩 Coordinación PIE</h2>
+      <p style="color:var(--text-soft);margin:0">Panel institucional de inclusión y necesidades educativas especiales.</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="registerPie()">+ Registrar estudiante</button>
+        <button class="btn btn-ghost btn-sm" onclick="printInclusionReport()">🖨️ Informe PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadPieCsv()">⬇️ CSV</button>
+      </div></div>
+    <div class="grid grid-4" style="margin-bottom:20px">
+      ${statCard("👥", "#5b4fc4", studs.length, "Estudiantes en PIE")}
+      ${statCard("🔴", "#e05260", perm, "NEE permanentes")}
+      ${statCard("🟡", "#e8a13c", trans, "NEE transitorias")}
+      ${statCard("🔔", overdue.length ? "#e05260" : "#2fae72", pend.length, "Revisiones PACI pendientes")}
+    </div>
+    <div class="grid grid-2">
+      <div class="card"><h3>🔔 Recordatorios de revisión PACI</h3>${reminders}</div>
+      <div class="card"><h3>📊 Distribución por perfil</h3>
+        ${Object.entries(dist).sort((a, b) => b[1] - a[1]).map(([p, n]) => `
+          <div class="skill-row"><div class="sk-head"><span>${esc(p)}</span><span>${n}</span></div>
+          <div class="skill-bar"><div class="skill-fill" style="width:${n / distMax * 100}%"></div></div></div>`).join("") || "<div class='empty'>Sin datos.</div>"}
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px;overflow-x:auto"><h3>📋 Registro de estudiantes con NEE</h3>
+      <table class="tbl"><thead><tr><th>Estudiante</th><th>Tipo</th><th>Perfil</th><th style="text-align:center">🧩</th><th style="text-align:center">📌</th><th style="text-align:center">📝</th><th>Revisión PACI</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <p style="font-size:.78rem;color:var(--text-soft);margin-top:10px">🧩 adecuaciones · 📌 apoyos · 📝 evaluaciones diferenciadas</p>
+    </div>`;
+}
+function remindReview(sid) {
+  notifyStudent(sid, "🔔 Revisión de tu PACI", `Tu Plan de Adecuación Curricular Individual (PACI) requiere revisión. El equipo PIE se contactará contigo.`);
+  // avisar también a los docentes del/la estudiante
+  const cids = (user(sid).enrolled || []);
+  const profs = new Set(); DB.courses.filter(c => cids.includes(c.id)).forEach(c => profs.add(c.teacher));
+  profs.forEach(pid => notifyStudent(pid, "🔔 Revisión PACI pendiente", `El PACI de ${user(sid).name} requiere revisión. Coordiná con el equipo PIE.`));
+  saveDB(); toast("Recordatorio enviado 🔔");
+}
+function registerPie() {
+  const studs = DB.users.filter(u => u.role === "estudiante");
+  openModal(`<h3>➕ Registrar estudiante en el PIE</h3>
+    <div class="field"><label>Estudiante</label><select id="rp-stud">${studs.map(s => `<option value="${s.id}">${esc(s.name)}${s.grade ? " · " + s.grade : ""}</option>`).join("")}</select></div>
+    <p style="font-size:.82rem;color:var(--text-soft)">A continuación completá el perfil de NEE.</p>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="editPieProfile(el('rp-stud').value)">Continuar</button></div>`);
+}
+function downloadPieCsv() {
+  const rows = [["Estudiante", "Curso", "Tipo NEE", "Perfil", "Diagnostico", "Profesional", "Adecuaciones", "Apoyos", "EvalDiferenciadas", "ProxRevision", "EstadoRevision"]];
+  neeStudents().forEach(s => {
+    const d = DB.pie[s.id], n = d.nee || {}, r = reviewStatus(s.id);
+    rows.push([s.name, s.grade || "", n.tipo || "", n.perfil || "", n.diagnostico || "", n.profesional || "",
+      adaptationsFor(s.id).length, (d.apoyos || []).length, (d.evalDif || []).length, n.revision || "",
+      { overdue: "Vencida", soon: "Próxima", ok: "Al día", none: "Sin fecha" }[r.state]]);
+  });
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = "informe_pie_brain_schooling.csv"; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast("CSV descargado ⬇️");
+}
+function printInclusionReport() {
+  const studs = neeStudents();
+  const perm = studs.filter(s => (DB.pie[s.id].nee || {}).tipo === "Permanente").length;
+  const trans = studs.filter(s => (DB.pie[s.id].nee || {}).tipo === "Transitoria").length;
+  const dist = {}; studs.forEach(s => { const p = (DB.pie[s.id].nee || {}).perfil || "Sin especificar"; dist[p] = (dist[p] || 0) + 1; });
+  const tbl = studs.map(s => { const d = DB.pie[s.id], n = d.nee || {};
+    return `<tr><td>${esc(s.name)}</td><td>${s.grade || ""}</td><td>${n.tipo || "—"}</td><td>${esc(n.perfil || "—")}</td><td>${adaptationsFor(s.id).length}</td><td>${(d.apoyos || []).length}</td><td>${(d.evalDif || []).length}</td><td>${n.revision ? fmtDate(n.revision) : "—"}</td></tr>`;
+  }).join("");
+  const html = `<h1>Informe Institucional de Inclusión (PIE)</h1>
+    <p>Brain Schooling · Generado el ${fmtDate(today())}</p>
+    <div class="stats"><b>Total en PIE:</b> ${studs.length} &nbsp; | &nbsp; <b>Permanentes:</b> ${perm} &nbsp; | &nbsp; <b>Transitorias:</b> ${trans} &nbsp; | &nbsp; <b>Adecuaciones registradas:</b> ${DB.adaptations.length}</div>
+    <h3>Distribución por perfil</h3><ul>${Object.entries(dist).sort((a, b) => b[1] - a[1]).map(([p, n]) => `<li>${esc(p)}: ${n}</li>`).join("")}</ul>
+    <h3>Registro de estudiantes</h3>
+    <table><thead><tr><th>Estudiante</th><th>Curso</th><th>Tipo</th><th>Perfil</th><th>Adec.</th><th>Apoyos</th><th>Eval.dif.</th><th>Próx. revisión</th></tr></thead><tbody>${tbl || "<tr><td colspan='8'>Sin datos</td></tr>"}</tbody></table>`;
+  const w = window.open("", "_blank"); if (!w) return toast("Permití las ventanas emergentes");
+  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Informe de Inclusión PIE</title>
+    <style>body{font-family:"Segoe UI",system-ui,sans-serif;color:#23263b;max-width:820px;margin:0 auto;padding:36px;line-height:1.5}
+    h1{border-bottom:3px solid #5b4fc4;padding-bottom:10px}h3{color:#5b4fc4;margin-top:22px}
+    .stats{background:#eceafb;border-radius:8px;padding:12px 16px;margin-top:8px}
+    table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}th,td{border:1px solid #ddd;padding:7px 9px;text-align:left}th{background:#f4f5fa}
+    @media print{.noprint{display:none}}</style></head>
+    <body><div class="noprint" style="text-align:center;margin-bottom:16px"><button onclick="window.print()" style="background:#5b4fc4;color:#fff;border:none;padding:9px 20px;border-radius:8px;font-weight:700;cursor:pointer">🖨️ Guardar como PDF</button></div>${html}</body></html>`);
+  w.document.close();
+}
+
+/* ============================================================
    ADMIN: USUARIOS
 ============================================================ */
 function viewPeople(c) {
@@ -1535,7 +1696,7 @@ function editUser(id) {
   openModal(`<h3>${id ? "Editar" : "Nuevo"} usuario</h3>
     <div class="field"><label>Nombre</label><input id="us-name" value="${esc(u.name)}"></div>
     <div class="field"><label>Email</label><input id="us-email" value="${esc(u.email)}"></div>
-    <div class="field"><label>Rol</label><select id="us-role"><option value="estudiante" ${u.role === "estudiante" ? "selected" : ""}>Estudiante</option><option value="docente" ${u.role === "docente" ? "selected" : ""}>Docente</option><option value="admin" ${u.role === "admin" ? "selected" : ""}>Administrador</option></select></div>
+    <div class="field"><label>Rol</label><select id="us-role"><option value="estudiante" ${u.role === "estudiante" ? "selected" : ""}>Estudiante</option><option value="docente" ${u.role === "docente" ? "selected" : ""}>Docente</option><option value="pie" ${u.role === "pie" ? "selected" : ""}>Coordinador/a PIE</option><option value="admin" ${u.role === "admin" ? "selected" : ""}>Administrador</option></select></div>
     <div class="field"><label>Curso (si es estudiante)</label><input id="us-grade" value="${esc(u.grade || "")}" placeholder="Ej: 4º A"></div>
     <div class="field"><label>Contraseña</label><input id="us-pass" value="${esc(u.pass)}"></div>
     <div class="modal-actions">
@@ -1618,6 +1779,6 @@ function boot() {
   loadDB();
   if (localStorage.getItem("brain_theme") === "dark") document.body.classList.add("dark");
   const s = localStorage.getItem(SESSION_KEY);
-  if (s && user(s)) { session = s; renderApp(); } else renderLogin();
+  if (s && user(s)) { session = s; if (user(s).role === "pie") view = "piepanel"; renderApp(); } else renderLogin();
 }
 boot();
