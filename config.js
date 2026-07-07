@@ -13,5 +13,11 @@
    (protegida por las políticas RLS de la tabla). No pongas aquí la "service_role". */
 window.BRAIN_CONFIG = {
   SUPABASE_URL: "https://azgkzyoqtjmmqqmoczyc.supabase.co",
-  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6Z2t6eW9xdGptbXFxbW9jenljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0Mjc1OTgsImV4cCI6MjA5OTAwMzU5OH0.TphIknTYuluw0B3pkiQ_B-wie2_JP29hOWZFRpZ_OPs"
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6Z2t6eW9xdGptbXFxbW9jenljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0Mjc1OTgsImV4cCI6MjA5OTAwMzU5OH0.TphIknTYuluw0B3pkiQ_B-wie2_JP29hOWZFRpZ_OPs",
+
+  // Autenticación real con Supabase Auth. Dejalo en false hasta completar en Supabase:
+  //   1) Authentication → Providers → Email → desactivar "Confirm email".
+  //   2) Ejecutar el SQL de "bloqueo" (ver botón ☁️ Sincronización en la app).
+  // Con REQUIRE_AUTH:true, el ingreso es por email/contraseña reales (login/registro).
+  REQUIRE_AUTH: false
 };

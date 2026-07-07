@@ -109,7 +109,67 @@ function quickLogin(email) {
   session = u.id; localStorage.setItem(SESSION_KEY, session);
   nivelSel = null; view = u.role === "pie" ? "piepanel" : "dashboard"; renderApp();
 }
-function logout() { session = null; localStorage.removeItem(SESSION_KEY); renderLogin(); }
+function logout() {
+  if (requireAuth() && typeof authSignOut === "function") authSignOut();
+  session = null; localStorage.removeItem(SESSION_KEY);
+  if (requireAuth()) renderAuthLogin(); else renderLogin();
+}
+
+/* ---------- Autenticación real (opt-in con Supabase Auth) ---------- */
+let authMode = "login";
+function requireAuth() { return !!(window.BRAIN_CONFIG && window.BRAIN_CONFIG.REQUIRE_AUTH) && (typeof syncEnabled !== "undefined" && syncEnabled); }
+function profileByEmail(email) { return DB.users.find(u => (u.email || "").toLowerCase() === (email || "").toLowerCase()); }
+function linkAuthProfile(email, name) {
+  let u = profileByEmail(email);
+  if (!u) {
+    const colors = ["#5b4fc4", "#14b8a6", "#e8a13c", "#e05260", "#2fae72", "#3b82f6"];
+    u = { id: uid("u"), name: name || email.split("@")[0], email: email, role: "estudiante", color: colors[DB.users.length % colors.length], enrolled: DB.courses.filter(c => c.area !== "electivo").map(c => c.id) };
+    DB.users.push(u); saveDB();
+  }
+  session = u.id; localStorage.setItem(SESSION_KEY, session);
+  nivelSel = null; view = u.role === "pie" ? "piepanel" : "dashboard";
+}
+function renderAuthLogin() {
+  const reg = authMode === "register";
+  el("app").innerHTML = `
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="login-logo" style="display:flex;justify-content:center">${brainLogo(72)}</div>
+        <div class="login-title">Brain <span>Schooling</span></div>
+        <div class="login-sub">${reg ? "Creá tu cuenta" : "Iniciá sesión con tu cuenta"}</div>
+        <form onsubmit="${reg ? "doAuthRegister(event)" : "doAuthLogin(event)"}">
+          ${reg ? `<div class="field"><label>Nombre completo</label><input id="au-name" required></div>` : ""}
+          <div class="field"><label>Correo electrónico</label><input id="au-email" type="email" placeholder="tu@correo.com" required></div>
+          <div class="field"><label>Contraseña</label><input id="au-pass" type="password" minlength="6" placeholder="mínimo 6 caracteres" required></div>
+          <div id="au-msg" style="font-size:.85rem;min-height:16px;margin-bottom:6px"></div>
+          <button class="btn btn-primary btn-block" type="submit">${reg ? "Registrarme" : "Ingresar"}</button>
+        </form>
+        <div class="login-hint">${reg ? "¿Ya tenés cuenta?" : "¿No tenés cuenta?"}
+          <a href="#" onclick="authMode='${reg ? "login" : "register"}';renderAuthLogin();return false">${reg ? "Iniciá sesión" : "Registrate"}</a></div>
+      </div>
+    </div>`;
+}
+async function doAuthLogin(e) {
+  e.preventDefault();
+  const email = el("au-email").value, pass = el("au-pass").value;
+  const m = el("au-msg"); m.style.color = "var(--text-soft)"; m.textContent = "Ingresando…";
+  const r = await authSignIn(email, pass);
+  if (!r.ok) {
+    m.style.color = "var(--danger)";
+    m.textContent = /not confirmed/i.test(r.msg) ? "Debés confirmar tu email antes de ingresar." : "No se pudo ingresar: " + r.msg;
+    return;
+  }
+  linkAuthProfile(email); renderApp();
+}
+async function doAuthRegister(e) {
+  e.preventDefault();
+  const name = el("au-name").value.trim(), email = el("au-email").value, pass = el("au-pass").value;
+  const m = el("au-msg"); m.style.color = "var(--text-soft)"; m.textContent = "Creando cuenta…";
+  const r = await authSignUp(email, pass, { name });
+  if (!r.ok) { m.style.color = "var(--danger)"; m.textContent = "No se pudo registrar: " + r.msg; return; }
+  if (r.session) { linkAuthProfile(email, name); renderApp(); }
+  else { m.style.color = "var(--ok)"; m.textContent = "Cuenta creada ✔️ Revisá tu email para confirmar y luego iniciá sesión."; authMode = "login"; }
+}
 
 /* ============================================================
    SHELL / NAVEGACIÓN
@@ -1815,6 +1875,20 @@ create policy "brain_rw" on brain_state
       </ol>
       <p style="font-size:.78rem;color:var(--text-soft);margin-top:8px">ℹ️ La política RLS de ejemplo permite lectura/escritura pública (nivel demo). Para producción, restringila con Supabase Auth.</p>
     </details>
+    <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:600;font-size:.88rem">🔐 Autenticación real (opcional) — ${(window.BRAIN_CONFIG && window.BRAIN_CONFIG.REQUIRE_AUTH) ? "🟢 Activada" : "⚪ Desactivada"}</summary>
+      <p style="font-size:.85rem;margin:10px 0 0">Con la autenticación real, el ingreso es por email y contraseña propios (no el login demo) y podés cerrar el acceso anónimo. Para activarla:</p>
+      <ol style="font-size:.85rem;margin:8px 0 0 18px;line-height:1.6">
+        <li>En Supabase: <b>Authentication → Providers → Email</b> y desactivá <b>“Confirm email”</b> (o configurá SMTP para enviar confirmaciones).</li>
+        <li>Ejecutá este SQL para permitir acceso <b>solo a usuarios autenticados</b>:</li>
+      </ol>
+      <pre style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.76rem;overflow-x:auto;margin-top:8px">${esc(`drop policy if exists "brain_rw" on brain_state;
+create policy "brain_auth_rw" on brain_state
+  for all to authenticated using (true) with check (true);`)}</pre>
+      <ol start="3" style="font-size:.85rem;margin:8px 0 0 18px;line-height:1.6">
+        <li>En <code>config.js</code> poné <code>REQUIRE_AUTH: true</code> y publicá.</li>
+      </ol>
+      <p style="font-size:.78rem;color:var(--text-soft);margin-top:8px">ℹ️ Nota: como todo el estado se guarda en un solo documento, todos los usuarios autenticados comparten acceso. El aislamiento por usuario (que cada quien vea solo lo suyo) requeriría separar los datos en tablas: es un paso mayor que podemos hacer aparte.</p>
+    </details>
     <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Cerrar</button></div>`);
 }
 async function doTestSync() {
@@ -1844,6 +1918,11 @@ async function boot() {
         subscribeCloud();
       }
     } catch (e) { console.warn("[sync] boot", e && e.message); }
+  }
+  if (requireAuth()) {
+    const email = await authSessionEmail();
+    if (email) { linkAuthProfile(email); renderApp(); } else renderAuthLogin();
+    return;
   }
   const s = localStorage.getItem(SESSION_KEY);
   if (s && user(s)) { session = s; if (user(s).role === "pie") view = "piepanel"; renderApp(); } else renderLogin();

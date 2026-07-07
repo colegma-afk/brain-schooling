@@ -66,6 +66,30 @@ function subscribeCloud() {
       .subscribe();
   } catch (e) { console.warn("[sync] subscribe", e.message); }
 }
+/* ---------- Autenticación real (Supabase Auth) ---------- */
+async function authSignIn(email, password) {
+  if (!sb) return { ok: false, msg: "Sin conexión a la nube" };
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email: (email || "").trim(), password });
+    if (error) return { ok: false, msg: error.message };
+    return { ok: true, user: data.user };
+  } catch (e) { return { ok: false, msg: e.message }; }
+}
+async function authSignUp(email, password, meta) {
+  if (!sb) return { ok: false, msg: "Sin conexión a la nube" };
+  try {
+    const { data, error } = await sb.auth.signUp({ email: (email || "").trim(), password, options: { data: meta || {} } });
+    if (error) return { ok: false, msg: error.message };
+    return { ok: true, user: data.user, session: data.session };
+  } catch (e) { return { ok: false, msg: e.message }; }
+}
+async function authSignOut() { try { if (sb) await sb.auth.signOut(); } catch (e) {} }
+async function authSessionEmail() {
+  if (!sb) return null;
+  try { const { data } = await sb.auth.getSession(); return data && data.session ? data.session.user.email : null; }
+  catch (e) { return null; }
+}
+
 async function testSyncConnection(url, key) {
   if (!window.supabase || !window.supabase.createClient) return { ok: false, msg: "No se cargó la librería de Supabase (revisá tu conexión)." };
   try {
