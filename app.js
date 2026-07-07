@@ -1875,6 +1875,7 @@ create policy "brain_rw" on brain_state
       </ol>
       <p style="font-size:.78rem;color:var(--text-soft);margin-top:8px">ℹ️ La política RLS de ejemplo permite lectura/escritura pública (nivel demo). Para producción, restringila con Supabase Auth.</p>
     </details>
+    ${enabled ? `<button class="btn btn-accent btn-sm" style="margin-top:12px" onclick="openSeedContent()">🌱 Sembrar contenido en la nube (Fase 1b)</button>` : ""}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:600;font-size:.88rem">🔐 Autenticación real (opcional) — ${(window.BRAIN_CONFIG && window.BRAIN_CONFIG.REQUIRE_AUTH) ? "🟢 Activada" : "⚪ Desactivada"}</summary>
       <p style="font-size:.85rem;margin:10px 0 0">Con la autenticación real, el ingreso es por email y contraseña propios (no el login demo) y podés cerrar el acceso anónimo. Para activarla:</p>
       <ol style="font-size:.85rem;margin:8px 0 0 18px;line-height:1.6">
@@ -1905,6 +1906,42 @@ async function doSaveSync() {
   setLocalSyncCfg(url, key); toast("Conectando a la nube…"); setTimeout(() => location.reload(), 600);
 }
 function doClearSync() { setLocalSyncCfg(null, null); toast("Sincronización desconectada"); setTimeout(() => location.reload(), 500); }
+
+/* ---------- Fase 1b: sembrar contenido compartido en las tablas de Supabase ---------- */
+function openSeedContent() {
+  openModal(`<h3>🌱 Sembrar contenido en la nube</h3>
+    <p style="font-size:.86rem;color:var(--text-soft)">Sube los <b>cursos, lecciones, quizzes, tareas y eventos</b> a las tablas de Supabase (tablas relacionales con RLS). Requiere iniciar sesión con un usuario <b>administrador</b> (Supabase Auth).</p>
+    <div class="field"><label>Email admin</label><input id="sd-email" type="email" placeholder="tu@correo.com"></div>
+    <div class="field"><label>Contraseña</label><input id="sd-pass" type="password"></div>
+    <div id="sd-msg" style="font-size:.84rem;margin-bottom:8px;min-height:16px"></div>
+    <p style="font-size:.78rem;color:var(--text-soft)">ℹ️ Antes: creá tu usuario admin en Supabase (Authentication → Users → Add user, con "Auto Confirm") y corré <code>update public.profiles set role='admin' where email='TU_EMAIL';</code></p>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>
+      <button class="btn btn-accent" onclick="runSeedContent()">🌱 Sembrar</button></div>`);
+}
+async function runSeedContent() {
+  if (typeof sb === "undefined" || !sb) return toast("Sin conexión a la nube");
+  const email = el("sd-email").value.trim(), pass = el("sd-pass").value;
+  const msg = el("sd-msg"); msg.style.color = "var(--text-soft)"; msg.textContent = "Ingresando…";
+  const r = await authSignIn(email, pass);
+  if (!r.ok) { msg.style.color = "var(--danger)"; msg.textContent = "No se pudo ingresar: " + r.msg; return; }
+  const base = seedDB();
+  const steps = [
+    ["courses", base.courses.map(c => ({ id: c.id, name: c.name, area: c.area, teacher_id: null, color: c.color, icon: c.icon, description: c.desc }))],
+    ["lessons", base.lessons.map(l => ({ id: l.id, course_id: l.course, nivel: l.nivel || "1M", title: l.title, mins: l.mins, oa: l.oa, body: l.body }))],
+    ["quizzes", base.quizzes.map(q => ({ id: q.id, course_id: q.course, nivel: q.nivel || "1M", title: q.title, questions: q.questions }))],
+    ["assignments", base.assignments.map(a => ({ id: a.id, course_id: a.course, title: a.title, description: a.desc, due: a.due, points: a.points }))],
+    ["events", base.events.map(e => ({ id: e.id, course_id: e.course, title: e.title, date: e.date, type: e.type }))],
+  ];
+  const report = [];
+  for (const [t, rows] of steps) {
+    msg.textContent = "Subiendo " + t + "… (" + rows.length + ")";
+    const { error } = await sb.from(t).upsert(rows);
+    report.push((error ? "❌" : "✅") + " " + t + " (" + rows.length + ")" + (error ? " — " + error.message : ""));
+    if (error) break;
+  }
+  msg.style.color = "var(--text)"; msg.innerHTML = report.join("<br>");
+  await authSignOut();
+}
 async function boot() {
   loadDB();
   if (localStorage.getItem("brain_theme") === "dark") document.body.classList.add("dark");
