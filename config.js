@@ -12,6 +12,6 @@
    Nota: la clave "anon public" está pensada para usarse en el navegador
    (protegida por las políticas RLS de la tabla). No pongas aquí la "service_role". */
 window.BRAIN_CONFIG = {
-  SUPABASE_URL: "",       // ej: https://xxxxxxxx.supabase.co
-  SUPABASE_ANON_KEY: ""   // clave anon public
+  SUPABASE_URL: "https://azgkzyoqtjmmqqmoczyc.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6Z2t6eW9xdGptbXFxbW9jenljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0Mjc1OTgsImV4cCI6MjA5OTAwMzU5OH0.TphIknTYuluw0B3pkiQ_B-wie2_JP29hOWZFRpZ_OPs"
 };
