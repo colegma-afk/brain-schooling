@@ -66,6 +66,42 @@ function subscribeCloud() {
       .subscribe();
   } catch (e) { console.warn("[sync] subscribe", e.message); }
 }
+/* ---------- Fase 3: lectura por tablas → reconstruye el objeto DB (cache de sesión) ----------
+   Trae solo las filas que la RLS permite ver al usuario autenticado y las mapea a la
+   forma que ya usa app.js, para no reescribir toda la UI. */
+async function cloudLoadAll() {
+  if (!sb) return null;
+  const names = ["profiles", "courses", "enrollments", "lessons", "quizzes", "assignments",
+    "submissions", "attendance", "events", "messages", "adaptations", "pie_profiles", "pie_apoyos", "pie_evaldif", "prelabor"];
+  let res;
+  try { res = await Promise.all(names.map(n => sb.from(n).select("*"))); }
+  catch (e) { console.warn("[cloud] loadAll", e.message); return null; }
+  const bad = res.find(r => r.error);
+  if (bad && bad.error) { console.warn("[cloud] loadAll", bad.error.message); return null; }
+  const D = {}; names.forEach((n, i) => D[n] = res[i].data || []);
+
+  const db = {
+    users: D.profiles.map(p => ({ id: p.id, name: p.name, email: p.email, role: p.role, grade: p.grade, color: p.color,
+      enrolled: D.enrollments.filter(e => e.student_id === p.id).map(e => e.course_id) })),
+    courses: D.courses.map(c => ({ id: c.id, name: c.name, area: c.area, teacher: c.teacher_id, color: c.color, icon: c.icon, desc: c.description })),
+    lessons: D.lessons.map(l => ({ id: l.id, course: l.course_id, nivel: l.nivel, title: l.title, mins: l.mins, oa: l.oa, body: l.body })),
+    quizzes: D.quizzes.map(q => ({ id: q.id, course: q.course_id, nivel: q.nivel, title: q.title, questions: q.questions })),
+    assignments: D.assignments.map(a => ({ id: a.id, course: a.course_id, title: a.title, desc: a.description, due: a.due, points: a.points })),
+    submissions: D.submissions.map(s => ({ id: s.id, assignment: s.assignment_id, student: s.student_id, text: s.body, date: s.date, grade: s.grade, feedback: s.feedback })),
+    attendance: D.attendance.map(a => ({ date: a.date, course: a.course_id, student: a.student_id, status: a.status })),
+    events: D.events.map(e => ({ id: e.id, course: e.course_id, title: e.title, date: e.date, type: e.type })),
+    messages: D.messages.map(m => ({ id: m.id, from: m.from_id, to: m.to_id, subject: m.subject, body: m.body, date: m.created_at, read: m.read })),
+    adaptations: D.adaptations.map(a => ({ id: a.id, student: a.student_id, course: a.course_id, lesson: a.lesson_id, title: a.title, profile: a.profile, content: a.content, readText: a.read_text, by: a.created_by, date: a.created_at })),
+    pie: {}, prelabor: {},
+  };
+  const pie = (sid) => (db.pie[sid] = db.pie[sid] || { nee: {}, apoyos: [], evalDif: [] });
+  D.pie_profiles.forEach(p => { pie(p.student_id).nee = { tipo: p.tipo, perfil: p.perfil, diagnostico: p.diagnostico, profesional: p.profesional, fecha: p.fecha, revision: p.revision, notas: p.notas }; });
+  D.pie_apoyos.forEach(a => { pie(a.student_id).apoyos.push({ id: a.id, text: a.text, date: a.date, by: a.created_by }); });
+  D.pie_evaldif.forEach(e => { pie(e.student_id).evalDif.push({ id: e.id, course: e.course_id, name: e.name, adec: e.adec, grade: e.grade, date: e.date }); });
+  D.prelabor.forEach(p => { db.prelabor[p.student_id] = { cv: p.cv || { headline: "", summary: "", experience: "", education: "" }, skills: p.skills || [], goals: p.goals || [] }; });
+  return db;
+}
+
 /* ---------- Autenticación real (Supabase Auth) ---------- */
 async function authSignIn(email, password) {
   if (!sb) return { ok: false, msg: "Sin conexión a la nube" };
