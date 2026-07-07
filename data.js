@@ -362,6 +362,7 @@ function seedDB() {
       { id: "m1", from: "u_prof1", to: "u_est1", subject: "Sobre tu TP", body: "Martín, revisá la pendiente del segundo gráfico. Nos vemos en clase.", date: "2026-07-05T10:00", read: false },
       { id: "m2", from: "u_admin", to: "u_est1", subject: "Bienvenido a Brain Schooling", body: "¡Hola! Te damos la bienvenida a la plataforma. Cualquier duda escribinos.", date: "2026-07-01T09:00", read: true },
     ],
+    adaptations: [],
     prelabor: {
       // por estudiante
       u_est1: {
@@ -389,6 +390,7 @@ function loadDB() {
     DB = raw ? JSON.parse(raw) : seedDB();
   } catch (e) { DB = seedDB(); }
   if (!DB.users) DB = seedDB();
+  if (!DB.adaptations) DB.adaptations = [];
   saveDB();
 }
 function saveDB() { localStorage.setItem(DB_KEY, JSON.stringify(DB)); }

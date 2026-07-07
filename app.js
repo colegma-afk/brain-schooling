@@ -339,7 +339,8 @@ function viewCourse(c) {
     tabBody = `<div class="list-item"><div class="avatar" style="background:${user(cc.teacher).color}">${initials(user(cc.teacher).name)}</div>
         <div class="grow"><div class="t">${user(cc.teacher).name}</div><div class="s">Docente</div></div></div>
       ${studs.map(s => `<div class="list-item"><div class="avatar" style="background:${s.color}">${initials(s.name)}</div>
-        <div class="grow"><div class="t">${esc(s.name)}</div><div class="s">${s.grade || "Estudiante"}</div></div></div>`).join("")}`;
+        <div class="grow"><div class="t">${esc(s.name)}</div><div class="s">${s.grade || "Estudiante"}${adaptationsFor(s.id).length ? ` · 🧩 ${adaptationsFor(s.id).length} adecuaciones` : ""}</div></div>
+        ${isTeacher ? `<button class="btn btn-ghost btn-sm" onclick="openStudentFicha('${s.id}')">📁 Ficha</button>` : ""}</div>`).join("")}`;
   }
 
   c.innerHTML = `
@@ -1186,6 +1187,7 @@ const ADAPT_PROFILES = {
 };
 let incState = { courseId: null, lessonId: null, profile: "dua", generated: false };
 let incLastPrint = "";
+let incLastRead = "";
 
 function viewInclusion(c) {
   const courses = DB.courses;
@@ -1222,7 +1224,11 @@ function viewInclusion(c) {
       </div>
       <button class="btn btn-primary" style="margin-top:14px" onclick="incState.generated=true;renderView()">✨ Generar adecuación</button>
     </div>
-    ${result}`;
+    ${result}
+    <div class="card" style="margin-top:18px">
+      <h3>📁 ${me().role === "estudiante" ? "Mis adecuaciones guardadas" : "Fichas guardadas (todas)"}</h3>
+      ${me().role === "estudiante" ? savedAdaptationsCard(session, false) : savedAllCard()}
+    </div>`;
 }
 
 function buildAdaptation(lesson, profKey) {
@@ -1266,8 +1272,10 @@ function buildAdaptation(lesson, profKey) {
   </div>`;
 
   incLastPrint = `<h1>${esc(lesson.title)} — Adaptación (${esc(p.name)})</h1>` + adapted + ficha;
+  incLastRead = readText;
 
   return `<div class="adapt-actions">
+      <button class="btn btn-primary btn-sm" onclick="saveAdaptationPrompt()">💾 Guardar en ficha</button>
       <button class="btn btn-accent btn-sm" onclick="readAdapt()">🔊 Leer en voz alta</button>
       <button class="btn btn-ghost btn-sm" onclick="stopRead()">⏹️ Detener</button>
       <button class="btn btn-ghost btn-sm" onclick="printAdapt()">🖨️ Imprimir / PDF</button>
@@ -1300,6 +1308,84 @@ function printAdapt() {
     <div class="noprint" style="text-align:center;margin-bottom:16px"><button onclick="window.print()" style="background:#5b4fc4;color:#fff;border:none;padding:9px 20px;border-radius:8px;font-weight:700;cursor:pointer">🖨️ Guardar como PDF</button></div>
     ${incLastPrint}</body></html>`);
   w.document.close();
+}
+
+/* ---------- guardar/adjuntar adecuación a la ficha del estudiante ---------- */
+function adaptationsFor(sid) { return DB.adaptations.filter(a => a.student === sid).sort((a, b) => (b.date || "").localeCompare(a.date || "")); }
+function saveAdaptationPrompt() {
+  if (!incLastPrint) return toast("Generá una adecuación primero");
+  const u = me();
+  if (u.role === "estudiante") { saveAdaptation(u.id); return; }
+  const cc = course(incState.courseId);
+  const studs = courseStudents(incState.courseId);
+  const list = studs.length ? studs : DB.users.filter(x => x.role === "estudiante");
+  openModal(`<h3>💾 Guardar en ficha de estudiante</h3>
+    <p style="color:var(--text-soft);font-size:.86rem;margin-bottom:12px">Adjuntar esta adecuación (${esc(ADAPT_PROFILES[incState.profile].name)}) a:</p>
+    <div class="field"><label>Estudiante</label><select id="ad-stud">${list.map(s => `<option value="${s.id}">${esc(s.name)}${s.grade ? " · " + s.grade : ""}</option>`).join("")}</select></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAdaptation(el('ad-stud').value)">Guardar en ficha</button></div>`);
+}
+function saveAdaptation(sid) {
+  const lesson = DB.lessons.find(l => l.id === incState.lessonId);
+  DB.adaptations.push({
+    id: uid("ad"), student: sid, course: incState.courseId, lesson: incState.lessonId,
+    title: lesson ? lesson.title : "Lección", profile: incState.profile,
+    date: today(), by: session, content: incLastPrint, readText: incLastRead,
+  });
+  saveDB(); closeModal(); renderView();
+  toast("Adecuación guardada en la ficha de " + user(sid).name.split(" ")[0] + " ✅");
+}
+function openSavedAdaptation(id) {
+  const a = DB.adaptations.find(x => x.id === id); if (!a) return;
+  const p = ADAPT_PROFILES[a.profile];
+  incLastPrint = a.content;
+  openModal(`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn btn-accent btn-sm" onclick="readSaved('${id}')">🔊 Leer</button>
+      <button class="btn btn-ghost btn-sm" onclick="stopRead()">⏹️</button>
+      <button class="btn btn-ghost btn-sm" onclick="printAdapt()">🖨️ PDF</button>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="closeModal()">Cerrar</button>
+    </div>
+    <div style="font-size:.78rem;color:var(--text-soft);margin-bottom:8px">${p ? p.ic + " " + esc(p.name) : ""} · Guardada ${fmtDate(a.date)}</div>
+    ${a.content}
+    <div id="adapt-readsrc" class="hidden">${esc(a.readText || "")}</div>`);
+}
+function readSaved(id) { const a = DB.adaptations.find(x => x.id === id); if (a) { incLastRead = a.readText || ""; readAdapt(); } }
+function deleteAdaptation(id) {
+  DB.adaptations = DB.adaptations.filter(a => a.id !== id); saveDB(); renderView(); toast("Adecuación eliminada");
+}
+function savedAdaptationsCard(sid, showStudentName) {
+  const list = adaptationsFor(sid);
+  const canDelete = me().role !== "estudiante";
+  const rows = list.map(a => {
+    const p = ADAPT_PROFILES[a.profile];
+    return `<div class="list-item">
+      <div class="stat-ico" style="background:${(p ? p.color : "#5b4fc4")}22;color:${p ? p.color : "#5b4fc4"};width:40px;height:40px;font-size:1rem">${p ? p.ic : "🧩"}</div>
+      <div class="grow"><div class="t">${esc(a.title)}</div><div class="s">${p ? esc(p.name) : ""}${showStudentName ? " · " + esc(user(a.student).name) : ""} · ${fmtDate(a.date)}</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="openSavedAdaptation('${a.id}')">Ver</button>
+      ${canDelete ? `<button class="icon-btn" title="Eliminar" onclick="deleteAdaptation('${a.id}')">🗑️</button>` : ""}
+    </div>`;
+  }).join("");
+  return list.length ? rows : "<div class='empty'>Sin adecuaciones guardadas.</div>";
+}
+function savedAllCard() {
+  const list = DB.adaptations.slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const rows = list.map(a => {
+    const p = ADAPT_PROFILES[a.profile];
+    return `<div class="list-item">
+      <div class="stat-ico" style="background:${(p ? p.color : "#5b4fc4")}22;color:${p ? p.color : "#5b4fc4"};width:40px;height:40px;font-size:1rem">${p ? p.ic : "🧩"}</div>
+      <div class="grow"><div class="t">${esc(a.title)}</div><div class="s">👤 ${esc(user(a.student).name)} · ${p ? esc(p.name) : ""} · ${fmtDate(a.date)}</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="openSavedAdaptation('${a.id}')">Ver</button>
+      <button class="icon-btn" title="Eliminar" onclick="deleteAdaptation('${a.id}')">🗑️</button>
+    </div>`;
+  }).join("");
+  return list.length ? rows : "<div class='empty'>Aún no se han guardado adecuaciones. Generá una y guardala en la ficha de un estudiante.</div>";
+}
+function openStudentFicha(sid) {
+  const s = user(sid);
+  openModal(`<h3>📁 Ficha de ${esc(s.name)}</h3>
+    <div style="color:var(--text-soft);font-size:.84rem;margin-bottom:14px">${s.grade || "Estudiante"} · Adecuaciones curriculares guardadas</div>
+    ${savedAdaptationsCard(sid, false)}
+    <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Cerrar</button></div>`);
 }
 
 /* ============================================================
