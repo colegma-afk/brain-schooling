@@ -36,7 +36,11 @@ create trigger on_auth_user_created
 create or replace function public.guard_role_change()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  if new.role is distinct from old.role and coalesce(public.my_role(),'') <> 'admin' then
+  -- Bloquea el auto-cambio de rol solo para usuarios autenticados que no son admin.
+  -- El SQL Editor / service_role (auth.uid() NULL) puede cambiar roles libremente.
+  if new.role is distinct from old.role
+     and auth.uid() is not null
+     and coalesce(public.my_role(),'') <> 'admin' then
     raise exception 'Solo un admin puede cambiar el rol';
   end if;
   return new;
