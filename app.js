@@ -22,6 +22,7 @@ const $ = (sel) => document.querySelector(sel);
 const el = (id) => document.getElementById(id);
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function uid(p) { return p + "_" + Math.random().toString(36).slice(2, 9); }
+function newId() { try { return crypto.randomUUID(); } catch (e) { return "id_" + Math.random().toString(36).slice(2) + Date.now(); } }
 function initials(name) { return name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase(); }
 function user(id) { return DB.users.find(u => u.id === id); }
 function course(id) { return DB.courses.find(c => c.id === id); }
@@ -159,7 +160,8 @@ async function doAuthLogin(e) {
     m.textContent = /not confirmed/i.test(r.msg) ? "Debés confirmar tu email antes de ingresar." : "No se pudo ingresar: " + r.msg;
     return;
   }
-  linkAuthProfile(email); renderApp();
+  const cdb = await cloudLoadAll(); if (cdb) DB = cdb;
+  linkAuthProfile(email); subscribeCloud(); renderApp();
 }
 async function doAuthRegister(e) {
   e.preventDefault();
@@ -167,7 +169,7 @@ async function doAuthRegister(e) {
   const m = el("au-msg"); m.style.color = "var(--text-soft)"; m.textContent = "Creando cuenta…";
   const r = await authSignUp(email, pass, { name });
   if (!r.ok) { m.style.color = "var(--danger)"; m.textContent = "No se pudo registrar: " + r.msg; return; }
-  if (r.session) { linkAuthProfile(email, name); renderApp(); }
+  if (r.session) { const cdb = await cloudLoadAll(); if (cdb) DB = cdb; linkAuthProfile(email, name); renderApp(); }
   else { m.style.color = "var(--ok)"; m.textContent = "Cuenta creada ✔️ Revisá tu email para confirmar y luego iniciá sesión."; authMode = "login"; }
 }
 
@@ -668,9 +670,10 @@ function openSubmit(aid) {
 }
 function submitAsg(aid) {
   const text = el("sub-text").value.trim(); if (!text) return toast("Escribí tu entrega");
-  const ex = submission(aid, session);
+  let ex = submission(aid, session);
   if (ex) { ex.text = text; ex.date = today(); }
-  else DB.submissions.push({ id: uid("s"), assignment: aid, student: session, text, date: today(), grade: null, feedback: "" });
+  else { ex = { id: newId(), assignment: aid, student: session, text, date: today(), grade: null, feedback: "" }; DB.submissions.push(ex); }
+  cloudUpsert("submissions", { id: ex.id, assignment_id: ex.assignment, student_id: ex.student, body: ex.text, date: ex.date, grade: ex.grade, feedback: ex.feedback });
   saveDB(); closeModal(); renderView(); toast("¡Entrega enviada! ✅");
 }
 
@@ -701,6 +704,7 @@ function saveGrade(aid, sid) {
   const g = el("gr-" + sid).value, fb = el("fb-" + sid).value;
   const sub = submission(aid, sid); if (!sub) return;
   sub.grade = g === "" ? null : Math.max(0, Math.min(10, +g)); sub.feedback = fb;
+  cloudUpsert("submissions", { id: sub.id, assignment_id: sub.assignment, student_id: sub.student, body: sub.text, date: sub.date, grade: sub.grade, feedback: sub.feedback });
   saveDB(); toast("Nota guardada para " + user(sid).name.split(" ")[0]);
 }
 
@@ -843,7 +847,7 @@ function viewMessages(c) {
       </div>
     </div>`;
 }
-function selMsg(id) { msgSel = id; const m = DB.messages.find(x => x.id === id); if (m && !m.read) { m.read = true; saveDB(); } renderApp(); }
+function selMsg(id) { msgSel = id; const m = DB.messages.find(x => x.id === id); if (m && !m.read) { m.read = true; cloudUpsert("messages", { id: m.id, read: true }); saveDB(); } renderApp(); }
 function composeMsg(to, subject) {
   const people = DB.users.filter(u => u.id !== session);
   openModal(`<h3>Nuevo mensaje</h3>
@@ -856,7 +860,9 @@ function composeMsg(to, subject) {
 function sendMsg() {
   const to = el("mc-to").value, subject = el("mc-subj").value.trim(), body = el("mc-body").value.trim();
   if (!subject || !body) return toast("Completá asunto y mensaje");
-  DB.messages.push({ id: uid("m"), from: session, to, subject, body, date: new Date().toISOString().slice(0, 16), read: false });
+  const m = { id: newId(), from: session, to, subject, body, date: new Date().toISOString().slice(0, 16), read: false };
+  DB.messages.push(m);
+  cloudUpsert("messages", { id: m.id, from_id: m.from, to_id: m.to, subject: m.subject, body: m.body, read: false });
   saveDB(); closeModal(); toast("Mensaje enviado ✉️");
 }
 
@@ -948,6 +954,7 @@ function setAtt(sid, code) {
   const rec = DB.attendance.find(a => a.course === attCourse && a.date === attDate && a.student === sid);
   if (rec) rec.status = code;
   else DB.attendance.push({ date: attDate, course: attCourse, student: sid, status: code });
+  cloudUpsert("attendance", { course_id: attCourse, student_id: sid, date: attDate, status: code }, "course_id,student_id,date");
   saveDB(); renderView();
 }
 
@@ -1006,10 +1013,11 @@ function viewPrelabor(c) {
       <button class="tab ${preTab === "goals" ? "active" : ""}" onclick="preTab='goals';renderView()">🎯 Objetivos</button>
     </div>${body}`;
 }
+function syncPrelabor() { const d = DB.prelabor[session]; if (d) cloudUpsert("prelabor", { student_id: session, cv: d.cv, skills: d.skills, goals: d.goals }); }
 function saveCV() {
   const d = prelaborData();
   d.cv = { headline: el("cv-headline").value, summary: el("cv-summary").value, experience: el("cv-exp").value, education: el("cv-edu").value };
-  saveDB(); toast("CV guardado 📄");
+  syncPrelabor(); saveDB(); toast("CV guardado 📄");
 }
 function previewCV() {
   const d = prelaborData(); const u = me();
@@ -1054,11 +1062,11 @@ function downloadCV() {
   w.document.write(html); w.document.close();
   setTimeout(() => { try { w.print(); } catch (e) {} }, 350);
 }
-function updSkill(i, v) { prelaborData().skills[i].level = +v; saveDB(); renderView(); }
-function addSkill() { const n = el("new-skill").value.trim(); if (!n) return; prelaborData().skills.push({ name: n, level: 50 }); saveDB(); renderView(); }
-function addGoal() { const n = el("new-goal").value.trim(); if (!n) return; prelaborData().goals.push({ id: uid("g"), text: n, done: false }); saveDB(); renderView(); }
-function toggleGoal(id) { const g = prelaborData().goals.find(x => x.id === id); g.done = !g.done; saveDB(); renderView(); }
-function delGoal(id) { const d = prelaborData(); d.goals = d.goals.filter(x => x.id !== id); saveDB(); renderView(); }
+function updSkill(i, v) { prelaborData().skills[i].level = +v; syncPrelabor(); saveDB(); renderView(); }
+function addSkill() { const n = el("new-skill").value.trim(); if (!n) return; prelaborData().skills.push({ name: n, level: 50 }); syncPrelabor(); saveDB(); renderView(); }
+function addGoal() { const n = el("new-goal").value.trim(); if (!n) return; prelaborData().goals.push({ id: uid("g"), text: n, done: false }); syncPrelabor(); saveDB(); renderView(); }
+function toggleGoal(id) { const g = prelaborData().goals.find(x => x.id === id); g.done = !g.done; syncPrelabor(); saveDB(); renderView(); }
+function delGoal(id) { const d = prelaborData(); d.goals = d.goals.filter(x => x.id !== id); syncPrelabor(); saveDB(); renderView(); }
 
 /* ============================================================
    ORIENTACIÓN UNIVERSITARIA (DEMRE / PAES / becas)
@@ -1401,16 +1409,18 @@ function saveAdaptationPrompt() {
 }
 function notifyStudent(sid, subject, body) {
   if (sid === session) return; // sin autonotificación
-  DB.messages.push({ id: uid("m"), from: session, to: sid, subject, body, date: new Date().toISOString().slice(0, 16), read: false });
+  const m = { id: newId(), from: session, to: sid, subject, body, date: new Date().toISOString().slice(0, 16), read: false };
+  DB.messages.push(m);
+  cloudUpsert("messages", { id: m.id, from_id: m.from, to_id: m.to, subject: m.subject, body: m.body, read: false });
 }
 function saveAdaptation(sid) {
   const lesson = DB.lessons.find(l => l.id === incState.lessonId);
   const p = ADAPT_PROFILES[incState.profile];
-  DB.adaptations.push({
-    id: uid("ad"), student: sid, course: incState.courseId, lesson: incState.lessonId,
+  const rec = { id: newId(), student: sid, course: incState.courseId, lesson: incState.lessonId,
     title: lesson ? lesson.title : "Lección", profile: incState.profile,
-    date: today(), by: session, content: incLastPrint, readText: incLastRead,
-  });
+    date: today(), by: session, content: incLastPrint, readText: incLastRead };
+  DB.adaptations.push(rec);
+  cloudUpsert("adaptations", { id: rec.id, student_id: rec.student, course_id: rec.course, lesson_id: rec.lesson, title: rec.title, profile: rec.profile, content: rec.content, read_text: rec.readText, created_by: rec.by });
   notifyStudent(sid, "🧩 Nueva adecuación en tu ficha", `${user(session).name} adjuntó una adecuación de la lección “${lesson ? lesson.title : ""}” (perfil ${p.name}). La encontrás en tu sección Apoyos DUA.`);
   saveDB(); closeModal(); renderView();
   toast("Adecuación guardada en la ficha de " + user(sid).name.split(" ")[0] + " ✅");
@@ -1431,7 +1441,7 @@ function openSavedAdaptation(id) {
 }
 function readSaved(id) { const a = DB.adaptations.find(x => x.id === id); if (a) { incLastRead = a.readText || ""; readAdapt(); } }
 function deleteAdaptation(id) {
-  DB.adaptations = DB.adaptations.filter(a => a.id !== id); saveDB(); renderView(); toast("Adecuación eliminada");
+  DB.adaptations = DB.adaptations.filter(a => a.id !== id); cloudDelete("adaptations", { id }); saveDB(); renderView(); toast("Adecuación eliminada");
 }
 function savedAdaptationsCard(sid, showStudentName) {
   const list = adaptationsFor(sid);
@@ -1540,7 +1550,9 @@ function editPieProfile(sid) {
       <button class="btn btn-primary" onclick="savePieProfile('${sid}')">Guardar</button></div>`);
 }
 function savePieProfile(sid) {
-  pieData(sid).nee = { tipo: el("pie-tipo").value, perfil: el("pie-perfil").value.trim(), diagnostico: el("pie-diag").value.trim(), profesional: el("pie-prof").value.trim(), fecha: el("pie-fecha").value, revision: el("pie-revision").value, notas: el("pie-notas").value.trim() };
+  const n = { tipo: el("pie-tipo").value, perfil: el("pie-perfil").value.trim(), diagnostico: el("pie-diag").value.trim(), profesional: el("pie-prof").value.trim(), fecha: el("pie-fecha").value, revision: el("pie-revision").value, notas: el("pie-notas").value.trim() };
+  pieData(sid).nee = n;
+  cloudUpsert("pie_profiles", { student_id: sid, tipo: n.tipo || null, perfil: n.perfil, diagnostico: n.diagnostico, profesional: n.profesional, fecha: n.fecha || null, revision: n.revision || null, notas: n.notas });
   saveDB(); toast("Perfil NEE guardado"); openStudentFicha(sid);
 }
 function addApoyo(sid) {
@@ -1551,11 +1563,13 @@ function addApoyo(sid) {
 }
 function saveApoyo(sid) {
   const t = el("ap-text").value.trim(); if (!t) return toast("Escribí el apoyo");
-  pieData(sid).apoyos.push({ id: uid("ap"), text: t, date: today(), by: session });
+  const ap = { id: newId(), text: t, date: today(), by: session };
+  pieData(sid).apoyos.push(ap);
+  cloudUpsert("pie_apoyos", { id: ap.id, student_id: sid, text: ap.text, date: ap.date, created_by: ap.by });
   notifyStudent(sid, "📌 Nuevo apoyo en tu ficha PIE", `${user(session).name} registró un apoyo: “${t}”.`);
   saveDB(); openStudentFicha(sid); toast("Apoyo registrado");
 }
-function delApoyo(sid, id) { const d = pieData(sid); d.apoyos = d.apoyos.filter(a => a.id !== id); saveDB(); openStudentFicha(sid); }
+function delApoyo(sid, id) { const d = pieData(sid); d.apoyos = d.apoyos.filter(a => a.id !== id); cloudDelete("pie_apoyos", { id }); saveDB(); openStudentFicha(sid); }
 function addEvalDif(sid) {
   const cs = DB.courses;
   openModal(`<h3>+ Evaluación diferenciada</h3>
@@ -1572,11 +1586,13 @@ function addEvalDif(sid) {
 function saveEvalDif(sid) {
   const name = el("ed-name").value.trim(); if (!name) return toast("Poné el nombre");
   const g = el("ed-grade").value;
-  pieData(sid).evalDif.push({ id: uid("ev"), course: el("ed-course").value, name, adec: el("ed-adec").value.trim(), grade: g === "" ? null : +g, date: el("ed-date").value });
+  const ev = { id: newId(), course: el("ed-course").value, name, adec: el("ed-adec").value.trim(), grade: g === "" ? null : +g, date: el("ed-date").value };
+  pieData(sid).evalDif.push(ev);
+  cloudUpsert("pie_evaldif", { id: ev.id, student_id: sid, course_id: ev.course, name: ev.name, adec: ev.adec, grade: ev.grade, date: ev.date || null });
   notifyStudent(sid, "📝 Evaluación diferenciada registrada", `Se registró la evaluación diferenciada “${name}” en tu ficha PIE.`);
   saveDB(); openStudentFicha(sid); toast("Evaluación diferenciada agregada");
 }
-function delEvalDif(sid, id) { const d = pieData(sid); d.evalDif = d.evalDif.filter(e => e.id !== id); saveDB(); openStudentFicha(sid); }
+function delEvalDif(sid, id) { const d = pieData(sid); d.evalDif = d.evalDif.filter(e => e.id !== id); cloudDelete("pie_evaldif", { id }); saveDB(); openStudentFicha(sid); }
 function printFicha(sid) {
   const s = user(sid), d = pieData(sid), n = d.nee || {};
   const html = `<h1>Ficha PIE — ${esc(s.name)}</h1><p>${s.grade || ""} · ${n.tipo ? "NEE " + n.tipo : "Sin perfil"}</p>
@@ -1958,7 +1974,8 @@ async function boot() {
   }
   if (requireAuth()) {
     const email = await authSessionEmail();
-    if (email) { linkAuthProfile(email); renderApp(); } else renderAuthLogin();
+    if (email) { const cdb = await cloudLoadAll(); if (cdb) DB = cdb; linkAuthProfile(email); subscribeCloud(); renderApp(); }
+    else renderAuthLogin();
     return;
   }
   const s = localStorage.getItem(SESSION_KEY);

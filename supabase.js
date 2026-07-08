@@ -44,6 +44,7 @@ async function cloudSave(obj) {
 }
 function scheduleCloudSave() {
   if (!syncEnabled) return;
+  if (typeof requireAuth === "function" && requireAuth()) return; // modo tablas: no se usa el blob
   clearTimeout(_cloudTimer);
   _cloudTimer = setTimeout(() => { if (typeof DB !== "undefined") cloudSave(DB); }, 700);
 }
@@ -100,6 +101,19 @@ async function cloudLoadAll() {
   D.pie_evaldif.forEach(e => { pie(e.student_id).evalDif.push({ id: e.id, course: e.course_id, name: e.name, adec: e.adec, grade: e.grade, date: e.date }); });
   D.prelabor.forEach(p => { db.prelabor[p.student_id] = { cv: p.cv || { headline: "", summary: "", experience: "", education: "" }, skills: p.skills || [], goals: p.goals || [] }; });
   return db;
+}
+
+/* ---------- Fase 3: escritura por tablas ---------- */
+function cloudActive() { return typeof requireAuth === "function" && requireAuth() && !!sb; }
+async function cloudUpsert(table, row, onConflict) {
+  if (!cloudActive()) return;
+  try { const q = sb.from(table).upsert(row, onConflict ? { onConflict } : undefined); const { error } = await q; if (error) console.warn("[cloud] upsert " + table, error.message); }
+  catch (e) { console.warn("[cloud] upsert " + table, e.message); }
+}
+async function cloudDelete(table, match) {
+  if (!cloudActive()) return;
+  try { const { error } = await sb.from(table).delete().match(match); if (error) console.warn("[cloud] delete " + table, error.message); }
+  catch (e) { console.warn("[cloud] delete " + table, e.message); }
 }
 
 /* ---------- Autenticación real (Supabase Auth) ---------- */
