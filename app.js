@@ -28,6 +28,7 @@ function user(id) { return DB.users.find(u => u.id === id); }
 function course(id) { return DB.courses.find(c => c.id === id); }
 function me() { return user(session); }
 function areaLabel(a) { return a === "prelaboral" ? "Pre-Laboral" : a === "electivo" ? "Electivo" : "Secundaria"; }
+function teacherOf(cc) { return (cc && cc.teacher && user(cc.teacher)) || { name: "Sin docente asignado", color: "#9ba0b8" }; }
 function areaTagClass(a) { return a === "prelaboral" ? "pre" : a === "electivo" ? "elec" : "sec"; }
 function fmtDate(d) {
   if (!d) return "—";
@@ -51,9 +52,11 @@ function closeModal() {
 /* ---------- consultas de dominio ---------- */
 function myCourses() {
   const u = me();
-  if (u.role === "admin") return DB.courses;
-  if (u.role === "docente") return DB.courses.filter(c => c.teacher === u.id);
-  return DB.courses.filter(c => (u.enrolled || []).includes(c.id));
+  if (u.role === "admin" || u.role === "pie") return DB.courses;
+  const general = () => DB.courses.filter(c => c.area !== "electivo");
+  if (u.role === "docente") { const mine = DB.courses.filter(c => c.teacher === u.id); return mine.length ? mine : general(); }
+  const enr = DB.courses.filter(c => (u.enrolled || []).includes(c.id));
+  return enr.length ? enr : general();
 }
 function courseStudents(cid) {
   return DB.users.filter(u => u.role === "estudiante" && (u.enrolled || []).includes(cid));
@@ -331,7 +334,7 @@ function viewDashboard(c) {
         ${cs.map(cc => `
           <div class="list-item" style="cursor:pointer" onclick="go('course','${cc.id}')">
             <div class="stat-ico" style="background:${cc.color}22;color:${cc.color};width:40px;height:40px;font-size:1.1rem">${cc.icon}</div>
-            <div class="grow"><div class="t">${cc.name}</div><div class="s">${areaLabel(cc.area)} · ${user(cc.teacher).name}</div></div>
+            <div class="grow"><div class="t">${cc.name}</div><div class="s">${areaLabel(cc.area)} · ${esc(teacherOf(cc).name)}</div></div>
             <span style="color:var(--text-soft)">›</span>
           </div>`).join("") || "<div class='empty'>Sin cursos.</div>"}
       </div>
@@ -349,7 +352,7 @@ function courseCardHtml(cc) {
       <div class="course-band" style="background:${cc.color}"></div>
       <div class="ico">${cc.icon}</div>
       <h3>${cc.name}</h3>
-      <div class="meta">${user(cc.teacher).name}</div>
+      <div class="meta">${esc(teacherOf(cc).name)}</div>
       <p style="font-size:.85rem;color:var(--text-soft);margin-top:8px">${esc(cc.desc)}</p>
       <div style="display:flex;gap:14px;margin-top:12px;font-size:.8rem;color:var(--text-soft)">
         <span>📖 ${nl} lecciones</span><span>📝 ${na} tareas</span>
@@ -411,8 +414,8 @@ function viewCourse(c) {
   } else if (courseTab === "temario") {
     tabBody = renderTemario(cc.id);
   } else if (courseTab === "people") {
-    tabBody = `<div class="list-item"><div class="avatar" style="background:${user(cc.teacher).color}">${initials(user(cc.teacher).name)}</div>
-        <div class="grow"><div class="t">${user(cc.teacher).name}</div><div class="s">Docente</div></div></div>
+    tabBody = `<div class="list-item"><div class="avatar" style="background:${teacherOf(cc).color}">${initials(teacherOf(cc).name)}</div>
+        <div class="grow"><div class="t">${esc(teacherOf(cc).name)}</div><div class="s">Docente</div></div></div>
       ${studs.map(s => `<div class="list-item"><div class="avatar" style="background:${s.color}">${initials(s.name)}</div>
         <div class="grow"><div class="t">${esc(s.name)}</div><div class="s">${s.grade || "Estudiante"}${adaptationsFor(s.id).length ? ` · 🧩 ${adaptationsFor(s.id).length} adecuaciones` : ""}</div></div>
         ${isTeacher ? `<button class="btn btn-ghost btn-sm" onclick="openStudentFicha('${s.id}')">📁 Ficha</button>` : ""}</div>`).join("")}`;
@@ -425,7 +428,7 @@ function viewCourse(c) {
       <div style="display:flex;align-items:center;gap:14px">
         <div style="font-size:2.4rem">${cc.icon}</div>
         <div><h2 style="font-size:1.4rem">${cc.name}</h2>
-          <div style="color:var(--text-soft);font-size:.88rem">${user(cc.teacher).name} · ${studs.length} estudiantes</div></div>
+          <div style="color:var(--text-soft);font-size:.88rem">${esc(teacherOf(cc).name)} · ${studs.length} estudiantes</div></div>
       </div>
       <p style="margin-top:12px;color:var(--text-soft)">${esc(cc.desc)}</p>
     </div>
@@ -1700,7 +1703,7 @@ function remindReview(sid) {
   notifyStudent(sid, "🔔 Revisión de tu PACI", `Tu Plan de Adecuación Curricular Individual (PACI) requiere revisión. El equipo PIE se contactará contigo.`);
   // avisar también a los docentes del/la estudiante
   const cids = (user(sid).enrolled || []);
-  const profs = new Set(); DB.courses.filter(c => cids.includes(c.id)).forEach(c => profs.add(c.teacher));
+  const profs = new Set(); DB.courses.filter(c => cids.includes(c.id)).forEach(c => { if (c.teacher) profs.add(c.teacher); });
   profs.forEach(pid => notifyStudent(pid, "🔔 Revisión PACI pendiente", `El PACI de ${user(sid).name} requiere revisión. Coordiná con el equipo PIE.`));
   saveDB(); toast("Recordatorio enviado 🔔");
 }
