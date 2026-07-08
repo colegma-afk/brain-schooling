@@ -19,5 +19,5 @@ window.BRAIN_CONFIG = {
   //   1) Authentication → Providers → Email → desactivar "Confirm email".
   //   2) Ejecutar el SQL de "bloqueo" (ver botón ☁️ Sincronización en la app).
   // Con REQUIRE_AUTH:true, el ingreso es por email/contraseña reales (login/registro).
-  REQUIRE_AUTH: false
+  REQUIRE_AUTH: true
 };
