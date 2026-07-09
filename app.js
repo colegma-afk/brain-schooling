@@ -211,6 +211,7 @@ function navFor(role) {
   if (role === "admin") {
     base.push({ id: "piepanel", ic: "🧩", label: "Panel PIE" });
     base.push({ id: "people", ic: "👥", label: "Usuarios" });
+    base.push({ id: "manage", ic: "🛠️", label: "Gestión" });
     base.push({ id: "reports", ic: "📈", label: "Reportes" });
   }
   return base;
@@ -220,7 +221,7 @@ const TITLES = {
   messages: "Mensajes", grades: "Mis notas", prelabor: "Módulo Pre-Laboral",
   gradebook: "Calificaciones", attendance: "Asistencia", people: "Usuarios", reports: "Reportes",
   course: "Curso", university: "Orientación Universitaria", inclusion: "Adecuaciones Curriculares",
-  piepanel: "Coordinación PIE",
+  piepanel: "Coordinación PIE", manage: "Gestión Académica",
 };
 function renderApp() {
   const u = me();
@@ -278,6 +279,7 @@ function renderView() {
     case "gradebook": return viewGradebook(c);
     case "attendance": return viewAttendance(c);
     case "people": return viewPeople(c);
+    case "manage": return viewManage(c);
     case "reports": return viewReports(c);
     default: c.innerHTML = "<div class='empty'>Sección no encontrada.</div>";
   }
@@ -1789,15 +1791,91 @@ function saveUser(id) {
   if (!name || !email) return toast("Completá nombre y email");
   const role = el("us-role").value, grade = el("us-grade").value, pass = el("us-pass").value;
   const colors = ["#5b4fc4", "#14b8a6", "#e8a13c", "#e05260", "#2fae72", "#3b82f6"];
-  if (id) { const u = user(id); Object.assign(u, { name, email, role, grade, pass }); }
-  else {
+  if (id) {
+    const u = user(id); Object.assign(u, { name, email, role, grade, pass });
+    cloudUpsert("profiles", { id: u.id, name, email, role, grade, color: u.color });
+  } else {
+    if (requireAuth()) { toast("En modo nube cada usuario se registra con su email; luego asignale el rol acá."); return; }
     const nu = { id: uid("u"), name, email, role, grade, pass, color: colors[DB.users.length % colors.length] };
     if (role === "estudiante") nu.enrolled = DB.courses.filter(c => c.area === "secundaria" || c.area === "prelaboral").map(c => c.id);
     DB.users.push(nu);
   }
   saveDB(); closeModal(); renderView(); toast("Usuario guardado");
 }
-function delUser(id) { DB.users = DB.users.filter(u => u.id !== id); saveDB(); closeModal(); renderView(); toast("Usuario eliminado"); }
+function delUser(id) { DB.users = DB.users.filter(u => u.id !== id); cloudDelete("profiles", { id }); saveDB(); closeModal(); renderView(); toast("Usuario eliminado"); }
+
+/* ============================================================
+   ADMIN: GESTIÓN ACADÉMICA (docentes, inscripciones, roles)
+============================================================ */
+let manageTab = "teachers", manageCourse = null;
+function viewManage(c) {
+  const docentes = DB.users.filter(u => u.role === "docente");
+  const students = DB.users.filter(u => u.role === "estudiante");
+  if (!manageCourse || !course(manageCourse)) manageCourse = DB.courses[0] && DB.courses[0].id;
+
+  let body = "";
+  if (manageTab === "teachers") {
+    body = `<div class="card" style="overflow-x:auto">
+      <table class="tbl"><thead><tr><th>Curso</th><th>Área</th><th>Docente asignado</th></tr></thead><tbody>
+      ${DB.courses.map(cc => `<tr>
+        <td><b>${cc.icon} ${esc(cc.name)}</b></td>
+        <td><span class="pill ${areaTagClass(cc.area) === "elec" ? "warn" : "info"}">${areaLabel(cc.area)}</span></td>
+        <td><select onchange="setCourseTeacher('${cc.id}',this.value)" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);min-width:180px">
+          <option value="">— Sin asignar —</option>
+          ${docentes.map(d => `<option value="${d.id}" ${cc.teacher === d.id ? "selected" : ""}>${esc(d.name)}</option>`).join("")}
+        </select></td></tr>`).join("")}
+      </tbody></table>
+      ${docentes.length ? "" : `<p style="font-size:.85rem;color:var(--text-soft);margin-top:12px">No hay docentes todavía. Cambiá el rol de un usuario a <b>Docente</b> en la sección Usuarios y aparecerá acá.</p>`}
+    </div>`;
+  } else {
+    const cc = course(manageCourse);
+    const enrolledCount = students.filter(s => (s.enrolled || []).includes(manageCourse)).length;
+    body = `<div class="card" style="margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+        <div class="field" style="margin:0;min-width:260px"><label>Curso</label>
+          <select onchange="manageCourse=this.value;renderView()">${DB.courses.map(x => `<option value="${x.id}" ${x.id === manageCourse ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></div>
+        <div style="font-size:.85rem;color:var(--text-soft)">${cc ? esc(cc.name) : ""} · <b>${enrolledCount}</b> inscritos · docente: ${esc(teacherOf(cc).name)}</div>
+      </div>
+      <div class="card">
+        <h3>Marcá los estudiantes inscritos en este curso</h3>
+        ${students.length ? students.map(s => {
+          const on = (s.enrolled || []).includes(manageCourse);
+          return `<label class="list-item" style="cursor:pointer">
+            <input type="checkbox" ${on ? "checked" : ""} onchange="toggleEnroll('${manageCourse}','${s.id}')" style="width:18px;height:18px;accent-color:var(--brand)">
+            <div class="avatar" style="background:${s.color};width:32px;height:32px;font-size:.72rem">${initials(s.name)}</div>
+            <div class="grow"><div class="t">${esc(s.name)}</div><div class="s">${esc(s.email || "")}${s.grade ? " · " + esc(s.grade) : ""}</div></div>
+            ${on ? `<span class="pill ok">Inscrito</span>` : ""}
+          </label>`;
+        }).join("") : "<div class='empty'>No hay estudiantes registrados aún.</div>"}
+      </div>`;
+  }
+
+  c.innerHTML = `
+    <div class="section-head"><div><h2 style="font-size:1.3rem">🛠️ Gestión Académica</h2>
+      <p style="color:var(--text-soft);margin:0">Asigná docentes a los cursos e inscribí estudiantes. Los roles se cambian en <a href="#" onclick="go('people');return false">Usuarios</a>.</p></div></div>
+    <div class="tabs">
+      <button class="tab ${manageTab === "teachers" ? "active" : ""}" onclick="manageTab='teachers';renderView()">🍎 Docentes por curso</button>
+      <button class="tab ${manageTab === "enroll" ? "active" : ""}" onclick="manageTab='enroll';renderView()">🧑‍🎓 Inscripciones</button>
+    </div>${body}`;
+}
+function setCourseTeacher(cid, tid) {
+  const cc = course(cid); if (!cc) return;
+  cc.teacher = tid || null;
+  cloudUpsert("courses", { id: cid, teacher_id: tid || null });
+  saveDB(); renderView();
+  toast(tid ? "Docente asignado a " + cc.name : "Curso sin docente");
+}
+function toggleEnroll(cid, sid) {
+  const s = user(sid); if (!s) return;
+  s.enrolled = s.enrolled || [];
+  if (s.enrolled.includes(cid)) {
+    s.enrolled = s.enrolled.filter(x => x !== cid);
+    cloudDelete("enrollments", { course_id: cid, student_id: sid });
+  } else {
+    s.enrolled.push(cid);
+    cloudUpsert("enrollments", { course_id: cid, student_id: sid }, "course_id,student_id");
+  }
+  saveDB(); renderView();
+}
 
 /* ============================================================
    ADMIN: REPORTES
