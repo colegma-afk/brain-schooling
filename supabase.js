@@ -135,8 +135,10 @@ function subscribeTables() {
     }, 600);
   };
   try {
+    // Una sola suscripción a todo el esquema public (evita el problema de
+    // múltiples bindings por canal). La RLS filtra lo que cada usuario recibe.
     const ch = sb.channel("bs_realtime");
-    RT_TABLES.forEach(t => ch.on("postgres_changes", { event: "*", schema: "public", table: t }, reload));
+    ch.on("postgres_changes", { event: "*", schema: "public" }, reload);
     ch.subscribe();
     _rtChannel = ch;
   } catch (e) { console.warn("[cloud] realtime", e.message); }
