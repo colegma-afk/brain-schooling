@@ -116,6 +116,32 @@ async function cloudDelete(table, match) {
   catch (e) { console.warn("[cloud] delete " + table, e.message); }
 }
 
+/* ---------- Fase 4: realtime por tablas ---------- */
+let _rtChannel = null, _rtTimer = null;
+const RT_TABLES = ["profiles", "courses", "enrollments", "lessons", "quizzes", "assignments",
+  "submissions", "attendance", "events", "messages", "adaptations", "pie_profiles", "pie_apoyos", "pie_evaldif", "prelabor"];
+function subscribeTables() {
+  if (!cloudActive() || !sb) return;
+  if (_rtChannel) { try { sb.removeChannel(_rtChannel); } catch (e) {} _rtChannel = null; }
+  const reload = () => {
+    clearTimeout(_rtTimer);
+    _rtTimer = setTimeout(async () => {
+      const cdb = await cloudLoadAll();
+      if (!cdb) return;
+      DB = cdb;
+      const overlay = document.getElementById("modal-overlay");
+      const modalOpen = overlay && !overlay.classList.contains("hidden");
+      if (typeof session !== "undefined" && session && typeof user === "function" && user(session) && !modalOpen && typeof renderApp === "function") renderApp();
+    }, 600);
+  };
+  try {
+    const ch = sb.channel("bs_realtime");
+    RT_TABLES.forEach(t => ch.on("postgres_changes", { event: "*", schema: "public", table: t }, reload));
+    ch.subscribe();
+    _rtChannel = ch;
+  } catch (e) { console.warn("[cloud] realtime", e.message); }
+}
+
 /* ---------- Autenticación real (Supabase Auth) ---------- */
 async function authSignIn(email, password) {
   if (!sb) return { ok: false, msg: "Sin conexión a la nube" };

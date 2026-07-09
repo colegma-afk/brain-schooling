@@ -164,7 +164,7 @@ async function doAuthLogin(e) {
     return;
   }
   const cdb = await cloudLoadAll(); if (cdb) DB = cdb;
-  linkAuthProfile(email); subscribeCloud(); renderApp();
+  linkAuthProfile(email); subscribeTables(); renderApp();
 }
 async function doAuthRegister(e) {
   e.preventDefault();
@@ -172,7 +172,7 @@ async function doAuthRegister(e) {
   const m = el("au-msg"); m.style.color = "var(--text-soft)"; m.textContent = "Creando cuenta…";
   const r = await authSignUp(email, pass, { name });
   if (!r.ok) { m.style.color = "var(--danger)"; m.textContent = "No se pudo registrar: " + r.msg; return; }
-  if (r.session) { const cdb = await cloudLoadAll(); if (cdb) DB = cdb; linkAuthProfile(email, name); renderApp(); }
+  if (r.session) { const cdb = await cloudLoadAll(); if (cdb) DB = cdb; linkAuthProfile(email, name); subscribeTables(); renderApp(); }
   else { m.style.color = "var(--ok)"; m.textContent = "Cuenta creada ✔️ Revisá tu email para confirmar y luego iniciá sesión."; authMode = "login"; }
 }
 
@@ -1987,6 +1987,15 @@ create policy "brain_auth_rw" on brain_state
       </ol>
       <p style="font-size:.78rem;color:var(--text-soft);margin-top:8px">ℹ️ Nota: como todo el estado se guarda en un solo documento, todos los usuarios autenticados comparten acceso. El aislamiento por usuario (que cada quien vea solo lo suyo) requeriría separar los datos en tablas: es un paso mayor que podemos hacer aparte.</p>
     </details>
+    <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:600;font-size:.88rem">⚡ Realtime (cambios en vivo)</summary>
+      <p style="font-size:.85rem;margin:10px 0 0">Para que los cambios de otros usuarios aparezcan sin recargar, habilitá la publicación realtime ejecutando este SQL una vez:</p>
+      <pre style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.72rem;overflow-x:auto;margin-top:8px">${esc(`alter publication supabase_realtime add table
+  public.profiles, public.courses, public.enrollments, public.lessons,
+  public.quizzes, public.assignments, public.submissions, public.attendance,
+  public.events, public.messages, public.adaptations, public.pie_profiles,
+  public.pie_apoyos, public.pie_evaldif, public.prelabor;`)}</pre>
+      <p style="font-size:.78rem;color:var(--text-soft);margin-top:6px">Si alguna tabla ya estaba en la publicación, Supabase avisará "already member" — es inofensivo.</p>
+    </details>
     <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Cerrar</button></div>`);
 }
 async function doTestSync() {
@@ -2055,7 +2064,7 @@ async function boot() {
   }
   if (requireAuth()) {
     const email = await authSessionEmail();
-    if (email) { const cdb = await cloudLoadAll(); if (cdb) DB = cdb; linkAuthProfile(email); subscribeCloud(); renderApp(); }
+    if (email) { const cdb = await cloudLoadAll(); if (cdb) DB = cdb; linkAuthProfile(email); subscribeTables(); renderApp(); }
     else renderAuthLogin();
     return;
   }
