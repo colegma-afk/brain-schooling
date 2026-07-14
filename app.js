@@ -486,8 +486,8 @@ function renderTemario(cid) {
 function openRealVideo(url, title, unitName) {
   openModal(`<h3 style="margin-bottom:4px">🎥 ${esc(title)}</h3>
     <div style="font-size:.8rem;color:var(--text-soft);margin-bottom:12px">${esc(unitName)}</div>
-    <div style="background:#000;border-radius:12px;overflow:hidden">
-      <video src="${esc(url)}" controls autoplay style="width:100%;max-height:70vh;display:block" controlsList="nodownload"></video>
+    <div class="video-player-wrap">
+      <video id="main-video-player" src="${esc(url)}" controls autoplay controlsList="nodownload"></video>
     </div>
     <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Cerrar</button></div>`);
 }

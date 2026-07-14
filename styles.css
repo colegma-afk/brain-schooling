@@ -398,6 +398,29 @@ body.dark .adapt-dyslexia { background: #2a2620; }
 .tem-min { font-size: .78rem; color: var(--text-soft); white-space: nowrap; }
 .tem-play { margin-left: 8px; white-space: nowrap; flex-shrink: 0; }
 
+/* ===== Reproductor de clase grabada: recorte universal a pizarra =====
+   El contenedor fuerza 4:3 y oculta lo que sobresalga (overflow: hidden).
+   El video (#main-video-player) se ancla al borde derecho y se agranda un
+   40% hacia la izquierda, dejando fuera del cuadro la franja del expositor
+   y centrando el foco en la pizarra/diapositiva. Se aplica automáticamente
+   a cualquier clase que se abra, sin importar la URL. */
+.video-player-wrap {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+}
+#main-video-player {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 140%;
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
+}
+
 /* ===== Video-lección ===== */
 .modal-box.video { max-width: 780px; padding: 0; overflow: hidden; }
 .video-stage {
