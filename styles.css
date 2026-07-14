@@ -396,6 +396,7 @@ body.dark .adapt-dyslexia { background: #2a2620; }
 .tem-ico.ej { filter: grayscale(.2); }
 .tem-name { flex: 1; min-width: 0; }
 .tem-min { font-size: .78rem; color: var(--text-soft); white-space: nowrap; }
+.tem-play { margin-left: 8px; white-space: nowrap; flex-shrink: 0; }
 
 /* ===== Video-lección ===== */
 .modal-box.video { max-width: 780px; padding: 0; overflow: hidden; }

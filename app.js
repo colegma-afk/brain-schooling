@@ -45,6 +45,7 @@ function toast(msg) {
 function openModal(html) { el("modal-box").innerHTML = html; el("modal-box").className = "modal-box"; el("modal-overlay").classList.remove("hidden"); }
 function closeModal() {
   stopVideo();
+  const v = el("modal-box").querySelector("video"); if (v) v.pause();
   el("modal-overlay").classList.add("hidden");
   el("modal-box").className = "modal-box";
 }
@@ -455,14 +456,15 @@ function tabBtn(id, label) { return `<button class="tab ${courseTab === id ? "ac
 function renderTemario(cid) {
   const data = (typeof TEMARIOS !== "undefined" && TEMARIOS[cid]) ? TEMARIOS[cid][nivelSel] : null;
   if (!data) return "<div class='empty'><span class='e'>📋</span>No hay temario cargado para este nivel.</div>";
-  let totMin = 0, totMat = 0, totEj = 0;
-  data.u.forEach(u => u.t.forEach(t => { totMin += t[1] || 0; if (t[2] === "E") totEj++; else totMat++; }));
+  let totMin = 0, totMat = 0, totEj = 0, totVid = 0;
+  data.u.forEach(u => u.t.forEach(t => { totMin += t[1] || 0; if (t[2] === "E") totEj++; else totMat++; if (t[3]) totVid++; }));
   const hrs = Math.floor(totMin / 60), min = totMin % 60;
   const unidades = data.u.map((u, i) => {
     const rows = u.t.map(t => `<div class="tem-row">
         <span class="tem-ico ${t[2] === "E" ? "ej" : "ma"}">${t[2] === "E" ? "✏️" : "📖"}</span>
         <span class="tem-name">${esc(t[0])}</span>
         <span class="tem-min">${t[1] ? t[1] + " min" : "—"}</span>
+        ${t[3] ? `<button class="btn btn-accent btn-sm tem-play" onclick="openRealVideo('${t[3]}','${esc(t[0]).replace(/'/g, "\\'")}','${esc(u.n)}')">▶ Ver clase</button>` : ""}
       </div>`).join("");
     return `<div class="tem-unit">
       <div class="tem-uhead">${u.a ? `<span class="tem-area">${esc(u.a)}</span>` : ""}<b>${i + 1}. ${esc(u.n)}</b><span class="tem-count">${u.t.length} clases</span></div>
@@ -475,8 +477,19 @@ function renderTemario(cid) {
         <span class="pill info">⏱️ ${data.horas || (hrs + "h " + min + "min")}</span>
         <span class="pill ok">📖 ${totMat} materias</span>
         <span class="pill warn">✏️ ${totEj} ejercicios</span>
+        ${totVid ? `<span class="pill ok">🎥 ${totVid} clases en video</span>` : ""}
       </div>
     </div>${unidades}`;
+}
+
+/* ---------- reproductor de video real (clases grabadas) ---------- */
+function openRealVideo(url, title, unitName) {
+  openModal(`<h3 style="margin-bottom:4px">🎥 ${esc(title)}</h3>
+    <div style="font-size:.8rem;color:var(--text-soft);margin-bottom:12px">${esc(unitName)}</div>
+    <div style="background:#000;border-radius:12px;overflow:hidden">
+      <video src="${esc(url)}" controls autoplay style="width:100%;max-height:70vh;display:block" controlsList="nodownload"></video>
+    </div>
+    <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Cerrar</button></div>`);
 }
 
 function asgRow(a) {
